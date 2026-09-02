@@ -68,10 +68,37 @@ async function wywolajClaude(env, wiadomosci, opcje = {}) {
 
   if (!odp.ok) {
     const blad = bezpieczneJson(body, null);
-    const szczegol = blad?.error?.message || body.slice(0, 300);
-    if (odp.status === 401) throw new BladApi(500, "Nieprawidłowy klucz API modelu (401). Ustaw go ponownie w Workerze.");
-    if (odp.status === 429) throw new BladApi(429, "Limit zapytań do modelu przekroczony. Spróbuj za chwilę.");
-    if (odp.status >= 500) throw new BladApi(502, "API modelu chwilowo niedostępne. Spróbuj za chwilę.");
+    const szczegol = blad?.error?.message || body.slice(0, 300) || "(brak treści błędu)";
+
+    // Pełna odpowiedź trafia do logów — widać ją przez `npx wrangler tail`,
+    // gdy komunikat dla użytkownika okaże się za ubogi na diagnozę
+    console.error(`Anthropic ${odp.status} dla modelu ${model}:`, body.slice(0, 1000));
+
+    if (odp.status === 401) {
+      throw new BladApi(500, "Nieprawidłowy klucz API modelu (401). Ustaw go ponownie w Workerze.");
+    }
+    if (odp.status === 429) {
+      throw new BladApi(429, "Limit zapytań do modelu przekroczony. Spróbuj za chwilę.");
+    }
+    if (odp.status >= 500) {
+      throw new BladApi(502, "API modelu chwilowo niedostępne. Spróbuj za chwilę.");
+    }
+
+    // Najczęstsze 400 przy świeżym koncie — nazywamy je po imieniu,
+    // bo surowy komunikat Anthropic nic użytkownikowi nie mówi
+    if (/credit balance is too low/i.test(szczegol)) {
+      throw new BladApi(
+        402,
+        "Konto Anthropic nie ma środków. Wejdź na console.anthropic.com → Plans & Billing i doładuj konto."
+      );
+    }
+    if (/not_found|does not exist|invalid model/i.test(szczegol)) {
+      throw new BladApi(
+        500,
+        `Twoje konto nie ma dostępu do modelu ${model}. Sprawdź go na console.anthropic.com.`
+      );
+    }
+
     throw new BladApi(502, `Błąd API modelu (${odp.status}): ${szczegol}`);
   }
 
