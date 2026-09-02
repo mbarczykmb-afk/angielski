@@ -15,6 +15,20 @@ export const MODEL_ROZMOWA = "claude-haiku-4-5";
 export const DOSTAWCA_GEMINI = "gemini";
 
 /**
+ * Czyści klucz przed wstawieniem do nagłówka.
+ *
+ * Sekret bywa zapisywany wklejeniem "na ślepo" — pole nie pokazuje znaków —
+ * więc łatwo o spację, znak nowej linii albo znak sterujący na końcu.
+ * Nagłówek z takim znakiem bywa odrzucany po drodze, zanim dotrze do API,
+ * co daje odpowiedź 400 z pustą treścią i bez żadnej wskazówki.
+ */
+export function czystyKlucz(wartosc) {
+  return String(wartosc ?? "")
+    .replace(/[\u0000-\u001F\u007F-\u009F]/g, "") // znaki sterujace, w tym nowa linia
+    .trim();
+}
+
+/**
  * Jedno wywołanie modelu. Zwraca sklejony tekst odpowiedzi.
  * opcje: { system, model, maxTokens, effort, dostawca, json }
  *
@@ -29,7 +43,7 @@ export async function wywolajAI(env, wiadomosci, opcje = {}) {
 }
 
 async function wywolajClaude(env, wiadomosci, opcje = {}) {
-  const klucz = env.ANTHROPIC_API_KEY;
+  const klucz = czystyKlucz(env.ANTHROPIC_API_KEY);
   if (!klucz) {
     throw new BladApi(500, "Worker nie ma klucza API. Ustaw go: npx wrangler secret put ANTHROPIC_API_KEY");
   }
@@ -143,18 +157,22 @@ async function wywolajClaude(env, wiadomosci, opcje = {}) {
  * treść błędu oraz kształt klucza — bez ujawniania go samego.
  */
 export async function diagnostyka(env) {
-  const klucz = env.ANTHROPIC_API_KEY || "";
+  const surowy = String(env.ANTHROPIC_API_KEY ?? "");
+  const oczyszczony = czystyKlucz(surowy);
 
-  // Klucz opisujemy, nie pokazujemy. Wystarczy, by wykryć typowe pomyłki:
-  // pusty, ze spacją, z cudzysłowem albo wklejony razem z fragmentem komendy.
+  // Klucz opisujemy, nie pokazujemy. To wystarcza, by wykryć typowe pomyłki:
+  // pusty, ze spacją, ze znakiem nowej linii albo wklejony razem z fragmentem komendy.
   const oKluczu = {
-    ustawiony: !!klucz,
-    dlugosc: klucz.length,
-    poczatek: klucz.slice(0, 7),
-    zaczynaSieOdSkAnt: klucz.startsWith("sk-ant-"),
-    maBialeZnaki: /\s/.test(klucz),
-    maCudzyslowy: /["']/.test(klucz),
-    rozniSieOdPrzycietego: klucz !== klucz.trim(),
+    ustawiony: !!surowy,
+    dlugoscSurowego: surowy.length,
+    dlugoscPoOczyszczeniu: oczyszczony.length,
+    czyszczenieCosZmienilo: surowy !== oczyszczony,
+    poczatek: oczyszczony.slice(0, 7),
+    zaczynaSieOdSkAnt: oczyszczony.startsWith("sk-ant-"),
+    maBialeZnaki: /\s/.test(surowy),
+    maCudzyslowy: /["']/.test(surowy),
+    maZnakiSterujace: /[\u0000-\u001F\u007F-\u009F]/.test(surowy),
+    maZnakiSpozaAscii: /[^\x20-\x7E]/.test(surowy),
   };
 
   const payload = {
@@ -163,41 +181,47 @@ export async function diagnostyka(env) {
     messages: [{ role: "user", content: "hi" }],
   };
 
-  let wynik;
-  try {
-    const odp = await fetch(API_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": klucz,
-        "anthropic-version": API_VERSION,
-      },
-      body: JSON.stringify(payload),
-    });
+  // Ta sama próba dwoma kluczami. Jeśli oczyszczony przechodzi, a surowy nie,
+  // przyczyna jest udowodniona, a nie domniemana.
+  async function sprobuj(klucz) {
+    try {
+      const odp = await fetch(API_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": klucz,
+          "anthropic-version": API_VERSION,
+        },
+        body: JSON.stringify(payload),
+      });
 
-    const naglowki = {};
-    odp.headers.forEach((wartosc, nazwa) => {
-      naglowki[nazwa] = wartosc;
-    });
+      const naglowki = {};
+      odp.headers.forEach((wartosc, nazwa) => {
+        naglowki[nazwa] = wartosc;
+      });
 
-    const tresc = await odp.text();
-
-    wynik = {
-      status: odp.status,
-      ok: odp.ok,
-      dlugoscOdpowiedzi: tresc.length,
-      naglowki,
-      tresc: tresc.slice(0, 800),
-    };
-  } catch (e) {
-    wynik = { wyjatek: e.name + ": " + e.message };
+      const tresc = await odp.text();
+      return {
+        status: odp.status,
+        ok: odp.ok,
+        dlugoscOdpowiedzi: tresc.length,
+        naglowki,
+        tresc: tresc.slice(0, 800),
+      };
+    } catch (e) {
+      return { wyjatek: e.name + ": " + e.message };
+    }
   }
+
+  const wynikSurowy = await sprobuj(surowy);
+  const wynikOczyszczony = oKluczu.czyszczenieCosZmienilo ? await sprobuj(oczyszczony) : "(identyczny jak surowy)";
 
   return {
     model: MODEL_GLOWNY,
     wyslanePola: Object.keys(payload),
     klucz: oKluczu,
-    odpowiedz: wynik,
+    probaSurowymKluczem: wynikSurowy,
+    probaOczyszczonymKluczem: wynikOczyszczony,
   };
 }
 

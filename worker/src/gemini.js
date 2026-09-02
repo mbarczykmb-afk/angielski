@@ -5,6 +5,7 @@
 // Ocena poziomu, plan i podsumowania zostają na Claude.
 // ============================================================
 import { BladApi, bezpieczneJson } from "./pomoc.js";
+import { czystyKlucz } from "./ai.js";
 
 const API = "https://generativelanguage.googleapis.com/v1beta/models";
 
@@ -35,7 +36,7 @@ export function naFormatGemini(wiadomosci) {
  * opcje: { system, model, maxTokens, json }
  */
 export async function wywolajGemini(env, wiadomosci, opcje = {}) {
-  const klucz = env.GEMINI_API_KEY;
+  const klucz = czystyKlucz(env.GEMINI_API_KEY);
   if (!klucz) {
     throw new BladApi(
       501,

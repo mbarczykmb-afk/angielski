@@ -1,5 +1,5 @@
 import { dzisISO, dataPlus, roznicaDni, bezpieczneJson, tekst, liczba } from "../src/pomoc.js";
-import { wyjmijJson } from "../src/ai.js";
+import { wyjmijJson, czystyKlucz } from "../src/ai.js";
 import { naFormatGemini } from "../src/gemini.js";
 
 let bledy = 0;
@@ -74,6 +74,19 @@ sprawdz("Gemini: pusta historia nie wywala się",
 
 sprawdz("Gemini: brakująca treść staje się pustym tekstem",
   naFormatGemini([{role:"user"}]), [{role:"user",parts:[{text:""}]}]);
+
+
+// --- Czyszczenie klucza API ---
+// Sekret wklejany "na slepo" latwo zanieczyscic; naglowek z takim znakiem
+// bywa odrzucany po drodze, dajac 400 bez zadnej tresci bledu.
+sprawdz("klucz: znak nowej linii na koncu znika", czystyKlucz("sk-ant-abc123\n"), "sk-ant-abc123");
+sprawdz("klucz: CRLF znika", czystyKlucz("sk-ant-abc123\r\n"), "sk-ant-abc123");
+sprawdz("klucz: spacje z obu stron znikaja", czystyKlucz("  sk-ant-abc123  "), "sk-ant-abc123");
+sprawdz("klucz: tabulator znika", czystyKlucz("sk-ant-abc123\t"), "sk-ant-abc123");
+sprawdz("klucz: znak sterujacy w srodku znika", czystyKlucz("sk-ant-\u0007abc"), "sk-ant-abc");
+sprawdz("klucz: poprawny zostaje nietkniety", czystyKlucz("sk-ant-api03-XyZ_123"), "sk-ant-api03-XyZ_123");
+sprawdz("klucz: pusty daje pusty", czystyKlucz(""), "");
+sprawdz("klucz: brak wartosci daje pusty", czystyKlucz(undefined), "");
 
 console.log(bledy ? `\n${bledy} błędów` : "\nWszystkie testy przeszły");
 process.exit(bledy ? 1 : 0);
