@@ -28,8 +28,10 @@ function podepnijNawigacje() {
     b.onclick = function () {
       // Wyjście z rozmowy przerywa lektora, żeby nie mówił w tle
       if (App.widok === "rozmowa" && b.dataset.widok !== "rozmowa") {
+        // Lektor milknie, mikrofon gasnie, a petla bez rak nie budzi sie w tle
         Mowa.cisza();
         Mowa.stop();
+        ustawPodpowiedz("");
       }
       pokazWidok(b.dataset.widok);
     };

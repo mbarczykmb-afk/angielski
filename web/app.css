@@ -185,6 +185,12 @@ label { display: block; font-size: 12px; color: var(--przygasly); margin: 10px 0
 .statystyka b { display: block; font-size: 20px; line-height: 1.2; }
 .statystyka span { font-size: 11px; color: var(--przygasly); }
 
+/* Pasek rozmowy jest wysoki (podpowiedz + duzy mikrofon), wiec widok rozmowy
+   potrzebuje wiekszego prześwitu niz pozostale — inaczej ucina ostatni dymek */
+#w-rozmowa {
+  padding-bottom: calc(var(--pasek-dolny) + 132px + env(safe-area-inset-bottom));
+}
+
 /* --- Czat --- */
 #czat-lista {
   display: flex;
@@ -198,6 +204,14 @@ label { display: block; font-size: 12px; color: var(--przygasly); margin: 10px 0
 .dymek.ja   { background: var(--zielony); color: #fff; border-bottom-right-radius: 5px; align-self: flex-end; }
 .dymek.pisze { color: var(--przygasly); font-style: italic; }
 .dymek .glosnik { background: none; border: none; color: var(--przygasly); cursor: pointer; font-size: 15px; padding: 2px 4px; margin-left: 4px; }
+
+/* Wypowiedź lektora jest domyślnie zakryta — najpierw słuchanie, tekst na żądanie */
+.dymek.ai .zakryte {
+  color: var(--przygasly);
+  font-style: italic;
+  font-size: 13.5px;
+}
+.dymek.ai:has(.zakryte) { cursor: pointer; border-style: dashed; }
 
 .korekta {
   align-self: flex-end;
@@ -222,12 +236,46 @@ label { display: block; font-size: 12px; color: var(--przygasly); margin: 10px 0
   max-width: 520px;
   background: var(--tlo2);
   border-top: 1px solid var(--ramka);
-  padding: 9px 10px;
-  display: flex;
-  gap: 8px;
-  align-items: flex-end;
+  padding: 8px 10px 10px;
   z-index: 55;
 }
+
+/* Co aplikacja teraz robi: słucha, czeka, rozpoznaje */
+#czat-podpowiedz {
+  min-height: 17px;
+  text-align: center;
+  font-size: 12.5px;
+  color: var(--przygasly);
+  margin-bottom: 6px;
+  padding: 0 8px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wejscie-rzad {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 22px;
+}
+
+.btn-ikona {
+  width: 42px; height: 42px;
+  border-radius: 50%;
+  border: 1px solid var(--ramka);
+  background: var(--tlo3);
+  color: var(--przygasly);
+  font-size: 17px;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+}
+.btn-ikona:active { transform: scale(.94); }
+
+/* Klawiatura wyjeżdża tylko na życzenie — mówienie jest domyślne */
+.rzad-klawiatura { display: none; gap: 8px; align-items: flex-end; margin-top: 9px; }
+#czat-wejscie.z-klawiatura .rzad-klawiatura { display: flex; }
+
 #czat-pole { flex: 1; max-height: 110px; padding: 10px 12px; border-radius: 20px; }
 
 .mikrofon {
@@ -240,6 +288,16 @@ label { display: block; font-size: 12px; color: var(--przygasly); margin: 10px 0
   font-size: 21px;
   cursor: pointer;
   display: flex; align-items: center; justify-content: center;
+}
+
+/* Mikrofon jest tu najważniejszym przyciskiem i ma tak wyglądać */
+.mikrofon.duzy {
+  width: 66px; height: 66px;
+  flex: 0 0 66px;
+  font-size: 28px;
+  background: var(--zielony);
+  color: #fff;
+  box-shadow: 0 3px 14px rgba(29, 158, 117, .35);
 }
 .mikrofon.slucha { background: var(--czerwony); color: #fff; animation: puls 1.3s infinite; }
 @keyframes puls {
@@ -312,7 +370,7 @@ canvas { width: 100%; height: auto; display: block; }
 /* --- Toast, spinner --- */
 #toast {
   position: fixed;
-  bottom: calc(var(--pasek-dolny) + 26px);
+  top: 64px;
   left: 50%;
   transform: translateX(-50%);
   padding: 11px 20px;

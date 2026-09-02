@@ -1,31 +1,90 @@
 /* ============================================================
-   Rozmowa — sedno aplikacji: czat z lektorem AI + mowa
+   Rozmowa — sedno aplikacji
+
+   Zasada: 90% mówienia i słuchania, 10% czytania.
+   Lektor mówi pierwszy, mikrofon włącza się sam, a tekst wypowiedzi
+   pozostaje zakryty, dopóki uczeń go nie odsłoni. Czytanie ma być
+   ratunkiem, gdy czegoś nie dosłyszał, a nie domyślnym trybem pracy.
    ============================================================ */
 
-async function otworzLekcje(dzien) {
+function otworzLekcje(dzien) {
   spinner(true, "Przygotowuję lekcję...");
-  try {
-    App.lekcja = await Api.pobierz("/api/lekcja/" + dzien);
+
+  Api.pobierz("/api/lekcja/" + dzien).then(function (lekcja) {
+    App.lekcja = lekcja;
     App.historiaCzatu = [];
     App.wypowiedzi = [];
     App.korekty = [];
     App.startLekcji = Date.now();
+    App.rozmowaTrwa = true;
 
     pokazWidok("rozmowa");
     rysujRozmowe();
 
-    // Pierwsza kwestia rozmówcy otwiera rozmowę
-    if (App.lekcja.pierwszaKwestia) {
-      dodajDymek("ai", App.lekcja.pierwszaKwestia);
-      App.historiaCzatu.push({ role: "assistant", content: App.lekcja.pierwszaKwestia });
-      Mowa.powiedz(App.lekcja.pierwszaKwestia);
+    // Lekcja zaczyna się od słuchania — lektor mówi, uczeń odpowiada
+    if (lekcja.pierwszaKwestia) {
+      dodajDymek("ai", lekcja.pierwszaKwestia);
+      App.historiaCzatu.push({ role: "assistant", content: lekcja.pierwszaKwestia });
+      mowIPodajGlos(lekcja.pierwszaKwestia);
     }
-  } catch (e) {
+  }).catch(function (e) {
     toast(e.message, false);
-  } finally {
+  }).finally(function () {
     spinner(false);
-  }
+  });
 }
+
+/* --- Rozmowa bez rąk: lektor mówi, potem sam oddaje głos uczniowi --- */
+
+function bezRakWlaczone() {
+  var ust = (App.stan && App.stan.user.ustawienia) || {};
+  return ust.bezRak !== false && Mowa.obslugiwaneSluchanie();
+}
+
+function trybSluchania() {
+  var ust = (App.stan && App.stan.user.ustawienia) || {};
+  return ust.trybSluchania !== false;
+}
+
+function mowIPodajGlos(tekst) {
+  App.ostatniaKwestia = tekst; // do powtórzenia na żądanie
+
+  Mowa.powiedz(tekst, function () {
+    // Mikrofon rusza dopiero po lektorze, żeby nie nagrał jego własnego głosu
+    if (App.rozmowaTrwa && App.widok === "rozmowa" && bezRakWlaczone()) {
+      sluchajUcznia();
+    }
+  });
+}
+
+function sluchajUcznia() {
+  if (!App.rozmowaTrwa || Mowa.slucha) return;
+
+  ustawPodpowiedz("🎤 Mów teraz po angielsku...");
+
+  Mowa.sluchaj(
+    function (tekst) {
+      ustawPodpowiedz(tekst ? "„" + tekst + "”" : "🎤 Słucham...");
+    },
+    function (koncowy) {
+      if (!App.rozmowaTrwa) return;
+
+      if (koncowy && koncowy.trim()) {
+        ustawPodpowiedz("");
+        wyslijWiadomosc(koncowy.trim());
+      } else {
+        ustawPodpowiedz("Nie dosłyszałem — dotknij mikrofonu i powiedz jeszcze raz.");
+      }
+    }
+  );
+}
+
+function ustawPodpowiedz(tekst) {
+  var el = document.getElementById("czat-podpowiedz");
+  if (el) el.textContent = tekst || "";
+}
+
+/* --- Widok lekcji --- */
 
 function rysujRozmowe() {
   var brak = document.getElementById("rozmowa-brak");
@@ -43,20 +102,25 @@ function rysujRozmowe() {
   document.getElementById("czat-wejscie").hidden = App.widok !== "rozmowa";
 
   var l = App.lekcja;
+
+  // Materiał jest zwinięty. Czytanie to dodatek, nie punkt wyjścia.
   document.getElementById("rozmowa-material").innerHTML =
-    "<h3>Dzień " + l.dzien + "</h3>" +
+    "<h3>Day " + l.dzien + "</h3>" +
     '<h2 style="font-size:17px">' + esc(l.temat) + "</h2>" +
+    (l.zadanieUcznia
+      ? '<p style="margin-top:6px"><b>Your task:</b> ' + esc(l.zadanieUcznia) + "</p>"
+      : "") +
     (l.wskazowka ? '<p class="podpis" style="margin-top:6px">💡 ' + esc(l.wskazowka) + "</p>" : "") +
 
-    "<details style='margin-top:10px'><summary>Słownictwo na dziś (" + (l.slownictwo || []).length + ")</summary>" +
+    "<details style='margin-top:10px'><summary>Words for today (" + (l.slownictwo || []).length + ")</summary>" +
     (l.slownictwo || []).map(function (s) {
       return '<div class="pozycja"><div class="tresc"><b>' + esc(s.en) + "</b>" +
         "<small>" + esc(s.pl) + (s.przyklad ? " · " + esc(s.przyklad) : "") + "</small></div>" +
-        '<button class="btn maly drugi" data-mow="' + esc(s.en) + '">🔊</button></div>';
+        '<button class="btn maly drugi" data-mow="' + esc(s.przyklad || s.en) + '">🔊</button></div>';
     }).join("") + "</details>" +
 
     ((l.struktury || []).length
-      ? "<details><summary>Zwroty do użycia</summary>" +
+      ? "<details><summary>Phrases to use</summary>" +
         (l.struktury || []).map(function (s) {
           return '<div class="pozycja"><div class="tresc"><b>' + esc(s) + "</b></div>" +
             '<button class="btn maly drugi" data-mow="' + esc(s) + '">🔊</button></div>';
@@ -64,9 +128,10 @@ function rysujRozmowe() {
       : "") +
 
     ((l.pytaniaPomocnicze || []).length
-      ? "<details><summary>Utknąłeś? Pytania pomocnicze</summary>" +
+      ? "<details><summary>Stuck? Try these</summary>" +
         (l.pytaniaPomocnicze || []).map(function (p) {
-          return '<p class="podpis" style="padding:5px 0">• ' + esc(p) + "</p>";
+          return '<div class="pozycja"><div class="tresc">' + esc(p) + "</div>" +
+            '<button class="btn maly drugi" data-mow="' + esc(p) + '">🔊</button></div>';
         }).join("") + "</details>"
       : "");
 
@@ -75,15 +140,36 @@ function rysujRozmowe() {
   });
 }
 
+/* --- Dymki --- */
+
 function dodajDymek(kto, tekst) {
   var lista = document.getElementById("czat-lista");
   var el = document.createElement("div");
   el.className = "dymek " + (kto === "ai" ? "ai" : "ja");
-  el.innerHTML = esc(tekst) +
-    (kto === "ai" ? ' <button class="glosnik" title="Odsłuchaj">🔊</button>' : "");
 
   if (kto === "ai") {
-    el.querySelector(".glosnik").onclick = function () { Mowa.powiedz(tekst); };
+    var zakryty = trybSluchania();
+
+    el.innerHTML =
+      '<span class="tekst-ai"' + (zakryty ? ' hidden' : '') + ">" + esc(tekst) + "</span>" +
+      (zakryty ? '<span class="zakryte">👂 Słuchaj — dotknij, żeby zobaczyć tekst</span>' : "") +
+      '<button class="glosnik" title="Powtórz">🔊</button>';
+
+    el.querySelector(".glosnik").onclick = function (zdarzenie) {
+      zdarzenie.stopPropagation();
+      Mowa.powiedz(tekst);
+    };
+
+    if (zakryty) {
+      el.onclick = function () {
+        el.querySelector(".tekst-ai").hidden = false;
+        var etykieta = el.querySelector(".zakryte");
+        if (etykieta) etykieta.remove();
+        el.onclick = null;
+      };
+    }
+  } else {
+    el.textContent = tekst;
   }
 
   lista.appendChild(el);
@@ -98,8 +184,12 @@ function dodajKorekte(korekta) {
   el.className = "korekta";
   el.innerHTML = "<b>✎ Drobna poprawka</b>" +
     (korekta.bylo ? '<div class="bylo">' + esc(korekta.bylo) + "</div>" : "") +
-    '<div class="powinno">' + esc(korekta.powinno) + "</div>" +
+    '<div class="powinno">' + esc(korekta.powinno) + ' <button class="glosnik" data-mow="' + esc(korekta.powinno) + '">🔊</button></div>' +
     (korekta.dlaczego ? '<div class="czemu">' + esc(korekta.dlaczego) + "</div>" : "");
+
+  el.querySelectorAll("[data-mow]").forEach(function (b) {
+    b.onclick = function () { Mowa.powiedz(b.dataset.mow); };
+  });
 
   document.getElementById("czat-lista").appendChild(el);
   App.korekty.push(korekta);
@@ -112,9 +202,11 @@ function przewinNaDol() {
   });
 }
 
-async function wyslijWiadomosc() {
+/* --- Wysyłka --- */
+
+async function wyslijWiadomosc(tekstZMowy) {
   var pole = document.getElementById("czat-pole");
-  var tekst = pole.value.trim();
+  var tekst = (tekstZMowy || pole.value || "").trim();
   if (!tekst || !App.lekcja) return;
 
   Mowa.stop();
@@ -126,7 +218,7 @@ async function wyslijWiadomosc() {
 
   var pisze = document.createElement("div");
   pisze.className = "dymek ai pisze";
-  pisze.textContent = "pisze...";
+  pisze.textContent = "...";
   document.getElementById("czat-lista").appendChild(pisze);
   przewinNaDol();
 
@@ -147,11 +239,11 @@ async function wyslijWiadomosc() {
     App.historiaCzatu.push({ role: "assistant", content: odp.odpowiedz });
 
     dodajDymek("ai", odp.odpowiedz);
-    Mowa.powiedz(odp.odpowiedz);
-
     if (odp.korekta) dodajKorekte(odp.korekta);
 
-    // Nowe słowa od rozmówcy od razu trafiają do powtórek
+    // Lektor mówi, a po nim mikrofon sam wraca do ucznia
+    mowIPodajGlos(odp.odpowiedz);
+
     for (var i = 0; i < (odp.noweSlowa || []).length; i++) {
       var s = odp.noweSlowa[i];
       if (!s || !s.en) continue;
@@ -164,23 +256,26 @@ async function wyslijWiadomosc() {
   } catch (e) {
     pisze.remove();
     toast(e.message, false);
-    // Wiadomość wraca do pola, żeby nie przepadła
-    pole.value = tekst;
+    pole.value = tekst; // wypowiedź nie przepada
   } finally {
     document.getElementById("btn-wyslij").disabled = false;
   }
 }
 
+/* --- Zakończenie --- */
+
 async function zakonczLekcje() {
   if (!App.lekcja) return;
 
   if (!App.wypowiedzi.length) {
-    toast("Powiedz albo napisz coś, zanim zakończysz.", false);
+    toast("Powiedz coś, zanim zakończysz.", false);
     return;
   }
 
+  App.rozmowaTrwa = false;
   Mowa.stop();
   Mowa.cisza();
+  ustawPodpowiedz("");
   spinner(true, "Podsumowuję rozmowę...");
 
   try {
@@ -233,7 +328,8 @@ function pokazPodsumowanie(wynik) {
     ((p.nowaSlowka || []).length
       ? '<h3 style="margin-top:14px">Dodane do powtórek</h3>' +
         p.nowaSlowka.map(function (s) {
-          return '<div class="pozycja"><div class="tresc"><b>' + esc(s.en) + "</b><small>" + esc(s.pl) + "</small></div></div>";
+          return '<div class="pozycja"><div class="tresc"><b>' + esc(s.en) + "</b><small>" + esc(s.pl) + "</small></div>" +
+            '<button class="btn maly drugi" data-mow="' + esc(s.en) + '">🔊</button></div>';
         }).join("")
       : "") +
     '<button class="btn" id="btn-wroc-dzis" style="margin-top:14px">Gotowe</button>';
@@ -241,6 +337,10 @@ function pokazPodsumowanie(wynik) {
   var stare = document.getElementById("blok-podsumowania");
   if (stare) stare.remove();
   widok.insertBefore(blok, widok.firstChild);
+
+  blok.querySelectorAll("[data-mow]").forEach(function (b) {
+    b.onclick = function () { Mowa.powiedz(b.dataset.mow); };
+  });
 
   document.getElementById("btn-wroc-dzis").onclick = function () {
     blok.remove();
@@ -251,13 +351,14 @@ function pokazPodsumowanie(wynik) {
   window.scrollTo(0, 0);
 }
 
+/* --- Podpięcie --- */
+
 function podepnijRozmowe() {
   var pole = document.getElementById("czat-pole");
 
-  document.getElementById("btn-wyslij").onclick = wyslijWiadomosc;
+  document.getElementById("btn-wyslij").onclick = function () { wyslijWiadomosc(); };
   document.getElementById("btn-zakoncz-lekcje").onclick = zakonczLekcje;
 
-  // Enter wysyła, Shift+Enter robi nową linię
   pole.onkeydown = function (e) {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
@@ -265,23 +366,38 @@ function podepnijRozmowe() {
     }
   };
 
-  // Pole rośnie razem z tekstem
   pole.oninput = function () {
     pole.style.height = "auto";
     pole.style.height = Math.min(110, pole.scrollHeight) + "px";
   };
 
+  // Mikrofon: dotknięcie w trakcie słuchania kończy wypowiedź,
+  // dotknięcie w ciszy — zaczyna ją od nowa
   document.getElementById("btn-mikrofon").onclick = function () {
-    Mowa.sluchaj(
-      function (tekst) {
-        pole.value = tekst;
-        pole.style.height = "auto";
-        pole.style.height = Math.min(110, pole.scrollHeight) + "px";
-      },
-      function (koncowy) {
-        // Rozpoznane zdanie wysyłamy od razu — rozmowa ma płynąć bez dodatkowego dotknięcia
-        if (koncowy && koncowy.trim()) wyslijWiadomosc();
-      }
-    );
+    if (Mowa.slucha) {
+      Mowa.stop();
+    } else {
+      Mowa.cisza();
+      sluchajUcznia();
+    }
   };
+
+  // Klawiatura jest schowana — pisanie to wyjście awaryjne, nie domyślny tryb
+  var przelacznik = document.getElementById("btn-klawiatura");
+  if (przelacznik) {
+    przelacznik.onclick = function () {
+      var widoczna = document.getElementById("czat-wejscie").classList.toggle("z-klawiatura");
+      if (widoczna) setTimeout(function () { pole.focus(); }, 50);
+    };
+  }
+
+  // Powtórzenie ostatniej kwestii — przy nauce ze słuchu używane najczęściej
+  var powtorz = document.getElementById("btn-powtorz");
+  if (powtorz) {
+    powtorz.onclick = function () {
+      if (!App.ostatniaKwestia) return;
+      Mowa.stop();
+      mowIPodajGlos(App.ostatniaKwestia);
+    };
+  }
 }

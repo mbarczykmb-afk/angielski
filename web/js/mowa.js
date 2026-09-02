@@ -31,17 +31,42 @@ var Mowa = {
     return this.glos;
   },
 
-  powiedz: function (tekst) {
-    if (!this.obslugiwaneMowienie() || !tekst) return;
+  /**
+   * Czyta tekst po angielsku.
+   * onKoniec — wołane, gdy lektor skończy. Na tym opiera się rozmowa bez rąk:
+   * mikrofon włącza się dopiero wtedy, żeby nie nagrywać własnego głosu lektora.
+   */
+  powiedz: function (tekst, onKoniec) {
     var ustawienia = (App.stan && App.stan.user.ustawienia) || {};
-    if (ustawienia.glos === false) return;
+
+    if (!this.obslugiwaneMowienie() || !tekst || ustawienia.glos === false) {
+      if (onKoniec) onKoniec();
+      return;
+    }
 
     window.speechSynthesis.cancel();
+
     var wypowiedz = new SpeechSynthesisUtterance(String(tekst));
     if (!this.glos) this.wybierzGlos();
     if (this.glos) wypowiedz.voice = this.glos;
     wypowiedz.lang = (this.glos && this.glos.lang) || "en-US";
     wypowiedz.rate = Number(ustawienia.tempoMowy || 0.95);
+
+    var zakonczono = false;
+    function koniec() {
+      if (zakonczono) return;
+      zakonczono = true;
+      if (onKoniec) onKoniec();
+    }
+
+    wypowiedz.onend = koniec;
+    wypowiedz.onerror = koniec;
+
+    // Zabezpieczenie: w Chrome zdarza się, że onend nie przychodzi wcale.
+    // Bez tego rozmowa bez rąk potrafiłaby zawisnąć na dobre.
+    var limit = Math.max(4000, String(tekst).length * 90);
+    setTimeout(koniec, limit);
+
     window.speechSynthesis.speak(wypowiedz);
   },
 

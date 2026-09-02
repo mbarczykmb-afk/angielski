@@ -25,8 +25,12 @@ function rysujUstawienia() {
     "</select></div>" +
 
     /* --- Mowa --- */
-    '<div class="karta"><h3>Mowa</h3>' +
+    '<div class="karta"><h3>Mowa i słuchanie</h3>' +
     przelacznik("ust-glos", "Lektor czyta odpowiedzi", ust.glos !== false) +
+    przelacznik("ust-bez-rak", "Rozmowa bez rąk", ust.bezRak !== false) +
+    przelacznik("ust-tryb-sluchania", "Tekst zakryty do dotknięcia", ust.trybSluchania !== false) +
+    '<p class="mini" style="margin-top:8px">Bez rąk: mikrofon włącza się sam, gdy lektor skończy mówić. ' +
+    "Tekst zakryty: najpierw słuchasz, a zapis odsłaniasz dotknięciem dopiero, gdy czegoś nie wychwycisz.</p>" +
     '<label for="pole-tempo">Tempo lektora: <span id="etykieta-tempo">' + (ust.tempoMowy || 0.95) + "×</span></label>" +
     '<input id="pole-tempo" type="range" min="0.6" max="1.3" step="0.05" value="' + (ust.tempoMowy || 0.95) + '">' +
     '<button class="btn drugi" id="btn-test-glosu" style="margin-top:8px">🔊 Posłuchaj próbki</button>' +
@@ -112,6 +116,8 @@ function podepnijUstawienia() {
     var ustawienia = {
       glos: document.getElementById("ust-glos").checked,
       mikrofon: true,
+      bezRak: document.getElementById("ust-bez-rak").checked,
+      trybSluchania: document.getElementById("ust-tryb-sluchania").checked,
       tempoMowy: Number(document.getElementById("pole-tempo").value),
       modelRozmowy: document.getElementById("pole-model").value,
       celDzienny: Number(document.getElementById("pole-cel-dzienny").value),
@@ -127,7 +133,7 @@ function podepnijUstawienia() {
     }
   }
 
-  ["ust-glos", "pole-model", "pole-cel-dzienny"].forEach(function (id) {
+  ["ust-glos", "ust-bez-rak", "ust-tryb-sluchania", "pole-model", "pole-cel-dzienny"].forEach(function (id) {
     document.getElementById(id).onchange = zapisz;
   });
 

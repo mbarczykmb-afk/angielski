@@ -240,20 +240,28 @@ export async function pobierzLekcje(env, uzytkownik, dzien) {
   const slabe = bezpieczneJson(ocena?.slabe, []);
 
   const system =
-    "Jesteś lektorem angielskiego przygotowującym JEDNĄ dzienną lekcję konwersacyjną dla polskojęzycznego " +
+    "Jesteś lektorem angielskiego przygotowującym JEDNĄ dzienną lekcję dla polskojęzycznego " +
     `ucznia na poziomie ${uzytkownik.poziom || "A2"}.\n` +
-    `Lekcja ma trwać około ${liczba(uzytkownik.cel_dzienny, 15)} minut i w 70% być rozmową.\n` +
+    `Lekcja trwa około ${liczba(uzytkownik.cel_dzienny, 15)} minut.\n\n` +
+    "NAJWAŻNIEJSZE: to lekcja MÓWIENIA I SŁUCHANIA. Uczeń będzie słuchał przez głośnik " +
+    "i odpowiadał głosem — nie będzie czytał. Czytanie to najwyżej 10% lekcji.\n" +
+    "Wszystko, co uczeń zobaczy lub usłyszy po angielsku, pisz tak, żeby dobrze brzmiało " +
+    "czytane na głos: krótkie zdania, naturalna mowa potoczna, formy ściągnięte (I'm, don't, " +
+    "let's). Żadnych wypunktowań, nawiasów ani skrótów typu e.g. — one się nie da czytać głosem.\n\n" +
     "Przygotuj:\n" +
-    "- 8 słówek lub zwrotów kluczowych dla tematu (angielski, polski, krótkie zdanie przykładowe po angielsku),\n" +
-    "- 3 struktury lub zwroty do aktywnego użycia w rozmowie,\n" +
-    "- scenariusz roli dla rozmówcy AI: kim jest, gdzie jesteście, po angielsku,\n" +
-    "- pierwszą kwestię rozmówcy po angielsku: 1-2 naturalne zdania otwierające rozmowę,\n" +
-    "- 3 pytania pomocnicze, gdyby uczeń utknął,\n" +
-    '- "wskazowka" po polsku: na co uczeń ma dziś szczególnie uważać.\n' +
-    (slabe.length ? `Słabe strony ucznia do przepracowania: ${slabe.join("; ")}\n` : "") +
-    "Odpowiedz WYŁĄCZNIE poprawnym JSON-em:\n" +
+    "- 8 słówek lub zwrotów kluczowych (angielski, polski, krótkie zdanie przykładowe po angielsku),\n" +
+    "- 3 zwroty do aktywnego użycia w rozmowie,\n" +
+    "- scenariusz roli dla rozmówcy AI: kim jest i gdzie jesteście, po angielsku,\n" +
+    "- pierwszą kwestię rozmówcy po angielsku: 1-2 naturalne zdania otwierające rozmowę, " +
+    "zakończone pytaniem, żeby uczeń od razu musiał się odezwać,\n" +
+    '- "zadanieUcznia": jedno zdanie PO ANGIELSKU mówiące, co uczeń ma dziś osiągnąć w rozmowie ' +
+    '(np. "Order a coffee and ask about the wifi password"),\n' +
+    "- 3 pytania pomocnicze po angielsku, gdyby uczeń utknął,\n" +
+    '- "wskazowka" po polsku: jedna rzecz, na którą uczeń ma dziś szczególnie uważać.\n' +
+    (slabe.length ? `\nSłabe strony ucznia do przepracowania: ${slabe.join("; ")}\n` : "") +
+    "\nOdpowiedz WYŁĄCZNIE poprawnym JSON-em:\n" +
     '{"slownictwo":[{"en":"","pl":"","przyklad":""}],"struktury":["..."],"scenariusz":"...",' +
-    '"pierwszaKwestia":"...","pytaniaPomocnicze":["..."],"wskazowka":"..."}';
+    '"pierwszaKwestia":"...","zadanieUcznia":"...","pytaniaPomocnicze":["..."],"wskazowka":"..."}';
 
   const dane = await wywolajAIJson(
     env,
@@ -295,15 +303,25 @@ export async function czat(env, uzytkownik, dane) {
     "Jesteś native speakerem i cierpliwym partnerem do rozmowy po angielsku. " +
     `Uczeń jest Polakiem na poziomie ${poziom}.\n` +
     `SCENARIUSZ: ${tekst(dane.scenariusz, 1500) || "Swobodna rozmowa na temat: " + tekst(dane.temat, 200)}\n\n` +
+    "TO JEST ROZMOWA GŁOSOWA. Uczeń SŁUCHA Twojej odpowiedzi przez głośnik i odpowiada " +
+    "mikrofonem. Tekstu zwykle nie widzi. To zmienia wszystko:\n\n" +
     "ZASADY:\n" +
-    `1. Odpowiadaj PO ANGIELSKU, językiem dopasowanym do poziomu ${poziom}. Krótko: 1-3 zdania, jak w prawdziwej rozmowie.\n` +
-    "2. Zawsze kończ pytaniem, żeby uczeń musiał odpowiedzieć.\n" +
-    "3. Nie wykładaj gramatyki w treści rozmowy — zostań w roli.\n" +
-    '4. Błędy ucznia zgłaszaj wyłącznie w polu "korekta" (po polsku) i tylko takie, które utrudniają zrozumienie ' +
-    "albo brzmią nienaturalnie. Drobiazgi puszczaj.\n" +
-    "5. Jeśli uczeń napisze po polsku, delikatnie wróć do angielskiego i podaj mu potrzebny zwrot.\n" +
-    '6. "noweSlowa" wypełniaj tylko wtedy, gdy sam użyłeś słowa spoza poziomu ucznia.\n' +
-    '7. "ocena" to 0-100: jak dobra komunikacyjnie była TA wypowiedź ucznia.\n\n' +
+    `1. Odpowiadaj PO ANGIELSKU, na poziomie ${poziom}. MAKSYMALNIE 2 zdania. Krócej znaczy lepiej — ` +
+    "uczeń ma mówić więcej niż Ty.\n" +
+    "2. Pisz tak, jak się mówi: formy ściągnięte, naturalna mowa potoczna. Żadnych wypunktowań, " +
+    "nawiasów, emoji ani skrótów typu e.g. — to wszystko brzmi absurdalnie czytane na głos.\n" +
+    "3. ZAWSZE kończ pytaniem. Bez pytania rozmowa się urywa i uczeń przestaje mówić.\n" +
+    "4. Nie wykładaj gramatyki w rozmowie — zostań w roli.\n" +
+    "5. Jeśli uczeń nie zrozumiał albo prosi o powtórzenie, powiedz to samo prościej i wolniej " +
+    "innymi słowami. Nie dodawaj nowego wątku.\n" +
+    "6. Uczeń mówi do mikrofonu, więc dostajesz zapis rozpoznanej mowy — bez interpunkcji " +
+    "i czasem z przekręconym słowem. Domyślaj się sensu i NIE czep się tego. " +
+    "Poprawiaj tylko realne błędy językowe, nie usterki rozpoznawania.\n" +
+    '7. Błędy zgłaszaj wyłącznie w polu "korekta" (po polsku) i tylko takie, które utrudniają ' +
+    "zrozumienie albo brzmią nienaturalnie. Drobiazgi puszczaj.\n" +
+    "8. Jeśli uczeń odezwie się po polsku, wróć do angielskiego i podaj mu zwrot, którego szukał.\n" +
+    '9. "noweSlowa" wypełniaj tylko wtedy, gdy sam użyłeś słowa spoza poziomu ucznia.\n' +
+    '10. "ocena" to 0-100: jak dobra komunikacyjnie była TA wypowiedź ucznia.\n\n' +
     "Odpowiedz WYŁĄCZNIE poprawnym JSON-em:\n" +
     '{"odpowiedz":"...","korekta":{"bylo":"...","powinno":"...","dlaczego":"..."},' +
     '"noweSlowa":[{"en":"","pl":""}],"ocena":75}\n' +

@@ -9,6 +9,8 @@ var App = {
   wypowiedzi: [],      // same wypowiedzi ucznia — do podsumowania
   korekty: [],         // korekty zebrane w trakcie rozmowy
   startLekcji: 0,      // znacznik czasu rozpoczęcia
+  rozmowaTrwa: false,  // czy pętla mówienia ma się sama podtrzymywać
+  ostatniaKwestia: "", // do powtórzenia na żądanie
   widok: "dzis",
 };
 

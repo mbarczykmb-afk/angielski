@@ -142,11 +142,20 @@
   <!-- USTAWIENIA -->
   <div id="w-ustawienia" class="widok"></div>
 
-  <!-- Pasek wprowadzania rozmowy (tylko w zakładce Rozmowa) -->
+  <!-- Pasek rozmowy: mikrofon jest głównym narzędziem, pisanie schowane -->
   <div id="czat-wejscie" hidden>
-    <button class="mikrofon" id="btn-mikrofon" title="Mów po angielsku">🎤</button>
-    <textarea id="czat-pole" rows="1" placeholder="Napisz po angielsku..."></textarea>
-    <button class="wyslij" id="btn-wyslij" title="Wyślij">➤</button>
+    <div id="czat-podpowiedz"></div>
+
+    <div class="wejscie-rzad">
+      <button class="btn-ikona" id="btn-klawiatura" title="Pisz zamiast mówić">⌨️</button>
+      <button class="mikrofon duzy" id="btn-mikrofon" title="Mów po angielsku">🎤</button>
+      <button class="btn-ikona" id="btn-powtorz" title="Powtórz ostatnie zdanie">🔁</button>
+    </div>
+
+    <div class="rzad-klawiatura">
+      <textarea id="czat-pole" rows="1" placeholder="Type in English..."></textarea>
+      <button class="wyslij" id="btn-wyslij" title="Wyślij">➤</button>
+    </div>
   </div>
 
   <nav class="nawigacja">
