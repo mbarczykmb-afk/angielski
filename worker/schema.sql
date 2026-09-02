@@ -14,7 +14,19 @@ CREATE TABLE IF NOT EXISTS users (
   streak        INTEGER NOT NULL DEFAULT 0,
   ostatni_dzien TEXT NOT NULL DEFAULT '',
   xp            INTEGER NOT NULL DEFAULT 0,
-  ustawienia    TEXT NOT NULL DEFAULT '{}'
+  ustawienia    TEXT NOT NULL DEFAULT '{}',
+  -- Kopie na Dysku Google (puste, dopóki użytkownik nie połączy konta)
+  dysk_refresh  TEXT NOT NULL DEFAULT '',   -- token odświeżania OAuth
+  dysk_folder   TEXT NOT NULL DEFAULT '',   -- id folderu z kopiami
+  dysk_email    TEXT NOT NULL DEFAULT ''    -- konto Google, na które lecą kopie
+);
+
+-- Jednorazowe tokeny stanu OAuth — wiążą powrót z Google z konkretnym profilem
+CREATE TABLE IF NOT EXISTS oauth_state (
+  state     TEXT PRIMARY KEY,
+  user_id   TEXT NOT NULL,
+  utworzono INTEGER NOT NULL,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS sessions (

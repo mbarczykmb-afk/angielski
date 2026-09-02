@@ -13,6 +13,11 @@ database_id = "WKLEJ_TUTAJ_ID_BAZY"
 # np. "https://mbarczykmb-afk.github.io" — dopóki jest "*", API przyjmuje wszystkich.
 DOZWOLONY_ORIGIN = "*"
 
+# OAuth do kopii na Dysku Google (opcjonalne — bez tego działa reszta aplikacji).
+# Client ID jest jawny z natury, więc może zostać tutaj. Sekret idzie przez wrangler secret.
+GOOGLE_CLIENT_ID = ""
+
 # Sekrety (NIE trzymamy ich w tym pliku):
 #   npx wrangler secret put ANTHROPIC_API_KEY   — klucz z console.anthropic.com
 #   npx wrangler secret put KOD_REJESTRACJI     — hasło do zakładania nowych profili (opcjonalne, ale zalecane)
+#   npx wrangler secret put GOOGLE_CLIENT_SECRET — sekret OAuth z Google Cloud Console (opcjonalne)

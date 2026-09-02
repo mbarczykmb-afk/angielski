@@ -19,6 +19,15 @@ import {
   wyjasnijSlowko,
 } from "./nauka.js";
 import { listaKopii, utworzKopieRecznie, eksportuj, przywroc, przywrocZMigawki } from "./kopie.js";
+import {
+  rozpocznijPolaczenie,
+  obsluzPowrot,
+  statusDysku,
+  listaKopiiZDysku,
+  wyslijKopie,
+  przywrocZDysku,
+  rozlaczDysk,
+} from "./dysk.js";
 
 async function czytajBody(request) {
   if (request.method === "GET" || request.method === "DELETE") return {};
@@ -29,7 +38,7 @@ async function czytajBody(request) {
   }
 }
 
-async function trasuj(request, env) {
+async function trasuj(request, env, ctx) {
   const url = new URL(request.url);
   const sciezka = url.pathname.replace(/\/+$/, "") || "/";
   const metoda = request.method;
@@ -46,9 +55,16 @@ async function trasuj(request, env) {
         baza: !!env.DB,
         klucz: !!env.ANTHROPIC_API_KEY,
         kodRejestracjiWymagany: !!env.KOD_REJESTRACJI,
+        dyskSkonfigurowany: !!(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET),
       },
       env
     );
+  }
+
+  // Powrót z autoryzacji Google — bez tokenu sesji, bo przychodzi z przeglądarki.
+  // Tożsamość profilu niesie jednorazowy token stanu wystawiony przy starcie.
+  if (sciezka === "/api/dysk/callback" && metoda === "GET") {
+    return obsluzPowrot(env, request);
   }
 
   if (sciezka === "/api/auth/profile" && metoda === "GET") {
@@ -102,7 +118,19 @@ async function trasuj(request, env) {
 
   const dopasowanieKonca = sciezka.match(/^\/api\/lekcja\/(\d+)\/koniec$/);
   if (dopasowanieKonca && metoda === "POST") {
-    return json(await zakonczLekcje(env, uzytkownik, Number(dopasowanieKonca[1]), body), env);
+    const wynik = await zakonczLekcje(env, uzytkownik, Number(dopasowanieKonca[1]), body);
+
+    // Kopia na Dysk leci po odesłaniu podsumowania — uczeń nie czeka na Google,
+    // a nieudany zapis na Dysk nie psuje zakończonej lekcji
+    if (uzytkownik.dysk_refresh && ctx) {
+      ctx.waitUntil(
+        wyslijKopie(env, uzytkownik, "po-lekcji").catch((e) =>
+          console.error("Kopia na Dysk nieudana:", e.message)
+        )
+      );
+    }
+
+    return json(wynik, env);
   }
 
   if (sciezka === "/api/czat" && metoda === "POST") {
@@ -157,17 +185,43 @@ async function trasuj(request, env) {
     return json(await przywroc(env, uzytkownik, body), env);
   }
 
+  // --- Dysk Google ---
+
+  if (sciezka === "/api/dysk/status" && metoda === "GET") {
+    return json(await statusDysku(env, uzytkownik), env);
+  }
+
+  if (sciezka === "/api/dysk/start" && metoda === "POST") {
+    return json(await rozpocznijPolaczenie(env, request, uzytkownik), env);
+  }
+
+  if (sciezka === "/api/dysk/kopie" && metoda === "GET") {
+    return json(await listaKopiiZDysku(env, uzytkownik), env);
+  }
+
+  if (sciezka === "/api/dysk/kopia" && metoda === "POST") {
+    return json(await wyslijKopie(env, uzytkownik, "reczna"), env);
+  }
+
+  if (sciezka === "/api/dysk/przywroc" && metoda === "POST") {
+    return json(await przywrocZDysku(env, uzytkownik, tekst(body.fileId, 128), strefaMin), env);
+  }
+
+  if (sciezka === "/api/dysk/rozlacz" && metoda === "POST") {
+    return json(await rozlaczDysk(env, uzytkownik), env);
+  }
+
   throw new BladApi(404, "Nieznana trasa: " + sciezka);
 }
 
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     if (request.method === "OPTIONS") {
       return new Response(null, { status: 204, headers: naglowkiCors(env) });
     }
 
     try {
-      return await trasuj(request, env);
+      return await trasuj(request, env, ctx);
     } catch (e) {
       if (e instanceof BladApi) {
         return json({ blad: e.message }, env, e.kod);

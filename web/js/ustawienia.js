@@ -46,6 +46,9 @@ function rysujUstawienia() {
     '<input id="pole-plik" type="file" accept="application/json,.json" hidden>' +
     '<div id="lista-kopii" style="margin-top:12px"></div></div>' +
 
+    /* --- Dysk Google --- */
+    '<div class="karta"><h3>Dysk Google</h3><div id="blok-dysku"><p class="mini">Sprawdzam...</p></div></div>' +
+
     /* --- Bezpieczeństwo --- */
     '<div class="karta"><h3>PIN</h3>' +
     '<p class="podpis">' + (u.maPin ? "Profil jest chroniony PIN-em." : "Profil nie ma PIN-u.") + "</p>" +
@@ -62,6 +65,7 @@ function rysujUstawienia() {
 
   podepnijUstawienia();
   wczytajListeKopii();
+  wczytajDysk();
 }
 
 function przelacznik(id, etykieta, wlaczony) {
@@ -259,5 +263,134 @@ async function wczytajListeKopii() {
     });
   } catch (e) {
     blok.innerHTML = '<p class="mini">Nie udało się wczytać listy kopii.</p>';
+  }
+}
+
+/* ============================================================
+   Dysk Google — kopie niezależne od Cloudflare
+   ============================================================ */
+
+async function wczytajDysk() {
+  var blok = document.getElementById("blok-dysku");
+  if (!blok) return;
+
+  try {
+    var status = await Api.pobierz("/api/dysk/status");
+
+    if (!status.skonfigurowany) {
+      blok.innerHTML =
+        '<p class="podpis">Worker nie ma danych OAuth Google, więc zapis na Dysk jest wyłączony.</p>' +
+        '<p class="mini" style="margin-top:6px">Instrukcja konfiguracji jest w README, sekcja „Kopie na Dysku Google”.</p>';
+      return;
+    }
+
+    if (!status.polaczony) {
+      blok.innerHTML =
+        '<p class="podpis">Po połączeniu konta aplikacja będzie odkładać postępy na Twój Dysk po każdej lekcji. ' +
+        "Kopia przestaje wtedy zależeć od jednego serwera.</p>" +
+        '<p class="mini" style="margin-top:6px">Aplikacja dostaje dostęp wyłącznie do plików, które sama utworzy — reszta Dysku pozostaje dla niej niewidoczna.</p>' +
+        '<button class="btn drugi" id="btn-polacz-dysk" style="margin-top:10px">Połącz z Dyskiem Google</button>';
+
+      document.getElementById("btn-polacz-dysk").onclick = polaczDysk;
+      return;
+    }
+
+    blok.innerHTML =
+      '<p class="podpis">✓ Połączono' + (status.email ? " jako " + esc(status.email) : "") + "</p>" +
+      '<button class="btn drugi" id="btn-kopia-dysk" style="margin-top:10px">☁ Wyślij kopię teraz</button>' +
+      '<div id="pliki-dysku" style="margin-top:12px"><p class="mini">Wczytuję listę...</p></div>' +
+      '<button class="btn niebezpieczny" id="btn-rozlacz-dysk" style="margin-top:10px">Rozłącz Dysk</button>';
+
+    document.getElementById("btn-kopia-dysk").onclick = async function () {
+      spinner(true, "Wysyłam na Dysk...");
+      try {
+        await Api.wyslij("/api/dysk/kopia", {});
+        toast("Kopia na Dysku ✓");
+        await wczytajPlikiZDysku();
+      } catch (e) {
+        toast(e.message, false);
+      } finally {
+        spinner(false);
+      }
+    };
+
+    document.getElementById("btn-rozlacz-dysk").onclick = async function () {
+      if (!confirm("Rozłączyć Dysk? Pliki już zapisane na Dysku zostaną nietknięte.")) return;
+      try {
+        await Api.wyslij("/api/dysk/rozlacz", {});
+        toast("Rozłączono ✓");
+        wczytajDysk();
+      } catch (e) {
+        toast(e.message, false);
+      }
+    };
+
+    wczytajPlikiZDysku();
+  } catch (e) {
+    blok.innerHTML = '<p class="mini">Nie udało się sprawdzić stanu Dysku: ' + esc(e.message) + "</p>";
+  }
+}
+
+async function polaczDysk() {
+  spinner(true, "Przygotowuję autoryzację...");
+  try {
+    var odp = await Api.wyslij("/api/dysk/start", {});
+
+    // Zgoda Google otwiera się w nowej karcie; aplikacja zostaje w tle
+    window.open(odp.url, "_blank", "noopener");
+
+    var blok = document.getElementById("blok-dysku");
+    blok.innerHTML =
+      '<p class="podpis">Otworzyłem stronę zgody Google w nowej karcie. Zatwierdź dostęp, wróć tutaj i dotknij „Sprawdź”.</p>' +
+      '<button class="btn" id="btn-sprawdz-dysk" style="margin-top:10px">Sprawdź połączenie</button>';
+
+    document.getElementById("btn-sprawdz-dysk").onclick = wczytajDysk;
+  } catch (e) {
+    toast(e.message, false);
+  } finally {
+    spinner(false);
+  }
+}
+
+async function wczytajPlikiZDysku() {
+  var blok = document.getElementById("pliki-dysku");
+  if (!blok) return;
+
+  try {
+    var odp = await Api.pobierz("/api/dysk/kopie");
+    var pliki = odp.pliki || [];
+
+    if (!pliki.length) {
+      blok.innerHTML = '<p class="mini">Na Dysku nie ma jeszcze żadnej kopii.</p>';
+      return;
+    }
+
+    blok.innerHTML = "<h3>Kopie na Dysku (" + pliki.length + ")</h3>" +
+      pliki.map(function (p) {
+        return '<div class="pozycja"><div class="tresc"><b>' + esc(p.utworzono) + "</b>" +
+          "<small>" + Math.round(p.rozmiar / 1024) + " KB</small></div>" +
+          '<button class="btn maly drugi" data-dysk="' + esc(p.id) + '">Przywróć</button></div>';
+      }).join("");
+
+    blok.querySelectorAll("[data-dysk]").forEach(function (b) {
+      b.onclick = async function () {
+        if (!confirm("Przywrócić postępy z tej kopii? Obecne dane profilu zostaną nadpisane.")) return;
+
+        spinner(true, "Pobieram z Dysku i przywracam...");
+        try {
+          await Api.wyslij("/api/dysk/przywroc", { fileId: b.dataset.dysk });
+          await odswiezStan();
+          odswiezOdznaki();
+          rysujUstawienia();
+          toast("Przywrócono z Dysku ✓");
+        } catch (e) {
+          toast(e.message, false);
+        } finally {
+          spinner(false);
+        }
+      };
+    });
+  } catch (e) {
+    blok.innerHTML = '<p class="mini">Nie udało się wczytać listy z Dysku: ' + esc(e.message) + "</p>";
   }
 }

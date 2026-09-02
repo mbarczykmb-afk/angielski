@@ -145,6 +145,63 @@ W **Więcej → Kopia zapasowa**:
 
 PIN nigdy nie trafia do pliku eksportu — kopię możesz spokojnie gdziekolwiek przechować.
 
+### Kopie na Dysku Google
+
+Opcjonalne, ale warte 10 minut konfiguracji: aplikacja odkłada postępy na Twój Dysk
+**po każdej lekcji**, więc kopia przestaje zależeć od Cloudflare. Gdyby baza D1 padła albo
+skasowałbyś projekt, postępy nadal masz.
+
+Aplikacja prosi o zakres `drive.file` — widzi **wyłącznie pliki, które sama utworzyła**.
+Reszta Twojego Dysku pozostaje dla niej niewidoczna.
+
+**Konfiguracja w Google Cloud Console** ([console.cloud.google.com](https://console.cloud.google.com)):
+
+1. Nowy projekt, np. `Angielski AI`.
+2. **APIs & Services → Library** → włącz **Google Drive API**.
+3. **OAuth consent screen** → typ **External**. Podaj nazwę aplikacji i swój e-mail.
+   W sekcji zakresów dodaj `.../auth/drive.file`.
+4. **Ustaw status publikacji na „In production"** (przycisk *Publish app*).
+
+   > To nie jest kosmetyka. W trybie *Testing* Google unieważnia tokeny odświeżania
+   > **po 7 dniach** — musiałbyś łączyć konto co tydzień. Zakres `drive.file` nie należy
+   > do wrażliwych, więc publikacja **nie wymaga** weryfikacji przez Google, jest natychmiastowa.
+
+5. **Credentials → Create Credentials → OAuth client ID → Web application**.
+   W **Authorized redirect URIs** wpisz dokładnie:
+
+   ```
+   https://angielski-ai.twoj-login.workers.dev/api/dysk/callback
+   ```
+
+   (Twój adres Workera z kroku 1, z doklejonym `/api/dysk/callback`.)
+
+6. Skopiuj **Client ID** do `worker/wrangler.toml`:
+
+   ```toml
+   GOOGLE_CLIENT_ID = "123456789-abc.apps.googleusercontent.com"
+   ```
+
+7. Sekret i wdrożenie:
+
+   ```bash
+   npx wrangler secret put GOOGLE_CLIENT_SECRET
+   npx wrangler deploy
+   ```
+
+**Jeśli baza powstała, zanim dodałem tę funkcję**, dorzuć brakujące kolumny:
+
+```bash
+npx wrangler d1 execute angielski-ai --remote --file=./migracje/001-dysk-google.sql
+```
+
+Przy świeżej instalacji ta migracja jest zbędna — `schema.sql` ma już wszystko i zgłosi
+`duplicate column name`.
+
+Potem w aplikacji: **Więcej → Dysk Google → Połącz z Dyskiem Google**. Otworzy się karta ze
+zgodą Google; po zatwierdzeniu wróć i dotknij **Sprawdź połączenie**. Od tej chwili po każdej
+lekcji w folderze *Angielski AI — kopie* ląduje plik JSON. Trzymane jest 10 ostatnich, starsze
+kasują się same. Każdą z nich przywrócisz jednym dotknięciem z listy w aplikacji.
+
 ---
 
 ## Struktura
@@ -174,7 +231,9 @@ worker/                backend (Cloudflare)
     auth.js            profile, PIN (PBKDF2), sesje
     nauka.js           ocena, plan, lekcja, rozmowa, słówka
     kopie.js           kopie zapasowe i przywracanie
+    dysk.js            OAuth i kopie na Dysku Google
   schema.sql           schemat D1
+  migracje/            zmiany schematu dla już wdrożonej bazy
   test/logika.test.mjs testy dat, parsowania i Leitnera
 
 tools/ikony.py         generator ikon PWA
@@ -209,3 +268,5 @@ przy starej wersji z pamięci podręcznej.
 | Lektor milczy | Wyłączony w *Więcej → Mowa*, albo telefon jest wyciszony |
 | Aplikacja pokazuje starą wersję | Podnieś `WERSJA` w `web/sw.js` i wgraj ponownie |
 | „Limit zapytań przekroczony" | Limit po stronie Anthropic — odczekaj chwilę |
+| „Dostęp do Dysku wygasł lub został cofnięty" | Aplikacja OAuth została w trybie *Testing* (token ginie po 7 dniach) albo cofnąłeś zgodę na koncie Google. Opublikuj aplikację i połącz konto ponownie |
+| Google: „redirect_uri_mismatch" | Adres w *Authorized redirect URIs* musi być **co do znaku** równy `https://<twój-worker>/api/dysk/callback` |
