@@ -113,11 +113,13 @@
 <div id="ekran-glowny" class="ekran">
   <div class="gora">
     <h1 id="naglowek-widoku">Dziś</h1>
-    <div class="odznaki">
+    <div class="odznaki" id="odznaki">
       <span class="odznaka poziom" id="odznaka-poziom">—</span>
       <span class="odznaka passa" id="odznaka-passa">🔥 0</span>
       <span class="odznaka xp" id="odznaka-xp">0 XP</span>
     </div>
+    <!-- W trakcie rozmowy zastępuje odznaki, żeby zakończenie było zawsze pod ręką -->
+    <button class="btn-koniec" id="btn-zakoncz-gora" hidden>✓ Zakończ</button>
   </div>
 
   <!-- DZIŚ -->

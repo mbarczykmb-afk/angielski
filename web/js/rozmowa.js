@@ -305,6 +305,8 @@ function pokazPodsumowanie(wynik) {
 
   document.getElementById("czat-lista").innerHTML = "";
   document.getElementById("czat-wejscie").hidden = true;
+  document.getElementById("btn-zakoncz-gora").hidden = true;
+  document.getElementById("odznaki").hidden = false;
   document.getElementById("rozmowa-tresc").hidden = true;
   document.getElementById("rozmowa-brak").hidden = true;
 
@@ -317,6 +319,20 @@ function pokazPodsumowanie(wynik) {
     '<h2 class="srodek" style="font-size:20px">+' + wynik.xp + " XP</h2>" +
     '<p class="podpis srodek" style="margin-bottom:12px">Ocena rozmowy: ' + (p.ocena || 0) + " / 100</p>" +
     (p.komentarz ? "<p>" + esc(p.komentarz) + "</p>" : "") +
+
+    // Konkretne bledy z cytatem i poprawna wersja — to z nich uczen wynosi najwiecej
+    ((p.bledy || []).length
+      ? '<h3 style="margin-top:16px">Twoje błędy (' + p.bledy.length + ")</h3>" +
+        p.bledy.map(function (b) {
+          return '<div class="blad">' +
+            (b.bylo ? '<div class="bylo">' + esc(b.bylo) + "</div>" : "") +
+            '<div class="powinno">' + esc(b.powinno || "") +
+            ' <button class="glosnik" data-mow="' + esc(b.powinno || "") + '">🔊</button></div>' +
+            (b.dlaczego ? '<div class="czemu">' + esc(b.dlaczego) + "</div>" : "") +
+            "</div>";
+        }).join("")
+      : '<p class="podpis" style="margin-top:14px">✓ Bez istotnych błędów w tej rozmowie.</p>') +
+
     ((p.mocne || []).length
       ? '<h3 style="margin-top:14px">Poszło dobrze</h3><div class="tagi">' +
         p.mocne.map(function (m) { return '<span class="tag mocny">' + esc(m) + "</span>"; }).join("") + "</div>"
@@ -358,6 +374,7 @@ function podepnijRozmowe() {
 
   document.getElementById("btn-wyslij").onclick = function () { wyslijWiadomosc(); };
   document.getElementById("btn-zakoncz-lekcje").onclick = zakonczLekcje;
+  document.getElementById("btn-zakoncz-gora").onclick = zakonczLekcje;
 
   pole.onkeydown = function (e) {
     if (e.key === "Enter" && !e.shiftKey) {

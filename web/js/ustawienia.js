@@ -31,6 +31,11 @@ function rysujUstawienia() {
     przelacznik("ust-tryb-sluchania", "Tekst zakryty do dotknięcia", ust.trybSluchania !== false) +
     '<p class="mini" style="margin-top:8px">Bez rąk: mikrofon włącza się sam, gdy lektor skończy mówić. ' +
     "Tekst zakryty: najpierw słuchasz, a zapis odsłaniasz dotknięciem dopiero, gdy czegoś nie wychwycisz.</p>" +
+    '<label for="pole-pauza">Ile ciszy kończy Twoją wypowiedź: <span id="etykieta-pauza">' +
+    ((ust.pauzaMs || 3500) / 1000).toFixed(1) + " s</span></label>" +
+    '<input id="pole-pauza" type="range" min="1500" max="8000" step="500" value="' + (ust.pauzaMs || 3500) + '">' +
+    '<p class="mini">Krócej: szybsza wymiana zdań. Dłużej: masz czas poszukać słowa w środku zdania, ' +
+    "bez przerywania w pół myśli.</p>" +
     '<label for="pole-tempo">Tempo lektora: <span id="etykieta-tempo">' + (ust.tempoMowy || 0.95) + "×</span></label>" +
     '<input id="pole-tempo" type="range" min="0.6" max="1.3" step="0.05" value="' + (ust.tempoMowy || 0.95) + '">' +
     '<button class="btn drugi" id="btn-test-glosu" style="margin-top:8px">🔊 Posłuchaj próbki</button>' +
@@ -118,6 +123,7 @@ function podepnijUstawienia() {
       mikrofon: true,
       bezRak: document.getElementById("ust-bez-rak").checked,
       trybSluchania: document.getElementById("ust-tryb-sluchania").checked,
+      pauzaMs: Number(document.getElementById("pole-pauza").value),
       tempoMowy: Number(document.getElementById("pole-tempo").value),
       modelRozmowy: document.getElementById("pole-model").value,
       celDzienny: Number(document.getElementById("pole-cel-dzienny").value),
@@ -160,6 +166,12 @@ function podepnijUstawienia() {
 
   poleModelu.addEventListener("change", opiszModel);
   opiszModel();
+
+  var pauza = document.getElementById("pole-pauza");
+  pauza.oninput = function () {
+    document.getElementById("etykieta-pauza").textContent = (Number(pauza.value) / 1000).toFixed(1) + " s";
+  };
+  pauza.onchange = zapisz;
 
   var tempo = document.getElementById("pole-tempo");
   tempo.oninput = function () {

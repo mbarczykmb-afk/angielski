@@ -62,7 +62,13 @@ function pokazWidok(nazwa) {
   document.getElementById("naglowek-widoku").textContent = NAZWY_WIDOKOW[nazwa];
 
   // Pasek wprowadzania należy wyłącznie do rozmowy w toku
-  document.getElementById("czat-wejscie").hidden = !(nazwa === "rozmowa" && App.lekcja);
+  var wRozmowie = nazwa === "rozmowa" && !!App.lekcja;
+  document.getElementById("czat-wejscie").hidden = !wRozmowie;
+
+  // W trakcie rozmowy odznaki ustępują miejsca zakończeniu lekcji —
+  // wynik i passa mogą poczekać, a wyjście z rozmowy nie
+  document.getElementById("odznaki").hidden = wRozmowie;
+  document.getElementById("btn-zakoncz-gora").hidden = !wRozmowie;
 
   var rysuj = {
     dzis: rysujDzis,

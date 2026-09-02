@@ -96,45 +96,70 @@ var Mowa = {
 
     this.cisza(); // lektor milknie, gdy uczeń zaczyna mówić
 
+    var ustawienia = (App.stan && App.stan.user.ustawienia) || {};
+    var pauza = Number(ustawienia.pauzaMs || 3500);
+
     var r = new Rozpoznawanie();
     r.lang = "en-US";
     r.interimResults = true;
-    r.continuous = false;
+    // Tryb ciągły plus własny licznik ciszy. Bez tego przeglądarka kończy
+    // nagranie przy pierwszym zawahaniu, a uczący się języka waha się często —
+    // szuka słowa w środku zdania i to jest normalna część mówienia.
+    r.continuous = true;
     r.maxAlternatives = 1;
 
     var self = this;
-    var ostatni = "";
+    var finalne = "";
+    var licznik = null;
+    var cokolwiekPowiedziano = false;
+
+    function odlozKoniec(ile) {
+      clearTimeout(licznik);
+      licznik = setTimeout(function () {
+        try { r.stop(); } catch (e) { /* już zatrzymane */ }
+      }, ile);
+    }
 
     r.onstart = function () {
       self.slucha = true;
       document.getElementById("btn-mikrofon").classList.add("slucha");
+      // Na rozpoczęcie mówienia dajemy więcej czasu niż na pauzę w środku zdania
+      odlozKoniec(pauza + 4000);
     };
 
     r.onresult = function (zdarzenie) {
-      var tekst = "";
+      var czastkowe = "";
+
       for (var i = zdarzenie.resultIndex; i < zdarzenie.results.length; i++) {
-        tekst += zdarzenie.results[i][0].transcript;
+        var wynik = zdarzenie.results[i];
+        if (wynik.isFinal) finalne += wynik[0].transcript + " ";
+        else czastkowe += wynik[0].transcript;
       }
-      ostatni = tekst;
-      onTekst(tekst, zdarzenie.results[zdarzenie.results.length - 1].isFinal);
+
+      cokolwiekPowiedziano = true;
+      onTekst((finalne + czastkowe).trim(), false);
+
+      // Każde kolejne słowo odsuwa moment zakończenia — mów tyle, ile chcesz
+      odlozKoniec(pauza);
     };
 
     r.onerror = function (zdarzenie) {
       if (zdarzenie.error === "not-allowed" || zdarzenie.error === "service-not-allowed") {
         toast("Brak zgody na mikrofon. Włącz ją w ustawieniach strony w Chrome.", false);
-      } else if (zdarzenie.error === "no-speech") {
-        toast("Nic nie usłyszałem — spróbuj jeszcze raz.", false);
-      } else if (zdarzenie.error !== "aborted") {
+      } else if (zdarzenie.error !== "aborted" && zdarzenie.error !== "no-speech") {
         toast("Błąd mikrofonu: " + zdarzenie.error, false);
       }
     };
 
     r.onend = function () {
+      clearTimeout(licznik);
       self.slucha = false;
+
       var przycisk = document.getElementById("btn-mikrofon");
       if (przycisk) przycisk.classList.remove("slucha");
       self.rozpoznawanie = null;
-      if (onKoniec) onKoniec(ostatni);
+
+      if (onKoniec) onKoniec(cokolwiekPowiedziano ? finalne.trim() : "");
     };
 
     this.rozpoznawanie = r;

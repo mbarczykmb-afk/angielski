@@ -22,6 +22,10 @@
 
 * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 
+/* Atrybut hidden musi wygrywac z regulami ustawiajacymi display,
+   inaczej element oznaczony jako ukryty i tak zostaje widoczny */
+[hidden] { display: none !important; }
+
 html { background: var(--tlo); }
 
 body {
@@ -65,6 +69,20 @@ body {
   font-weight: 700;
   white-space: nowrap;
 }
+.btn-koniec {
+  background: var(--zielony);
+  color: #fff;
+  border: none;
+  border-radius: 999px;
+  padding: 7px 15px;
+  font-size: 13px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.btn-koniec:active { transform: scale(.96); }
+
 .odznaka.passa { color: var(--zolty); }
 .odznaka.xp    { color: var(--zielony2); }
 .odznaka.poziom{ color: var(--niebieski); }
@@ -222,6 +240,19 @@ label { display: block; font-size: 12px; color: var(--przygasly); margin: 10px 0
   padding: 9px 12px;
   font-size: 13px;
 }
+/* Blad w podsumowaniu: cytat, poprawna wersja, powod */
+.blad {
+  background: var(--tlo3);
+  border-left: 3px solid var(--czerwony);
+  border-radius: 0 8px 8px 0;
+  padding: 9px 12px;
+  margin-bottom: 8px;
+  font-size: 13.5px;
+}
+.blad .bylo { text-decoration: line-through; color: var(--przygasly); }
+.blad .powinno { color: var(--zielony2); font-weight: 600; margin-top: 2px; }
+.blad .czemu { color: var(--przygasly); margin-top: 4px; font-size: 12.5px; }
+
 .korekta b { color: var(--zolty); display: block; margin-bottom: 3px; font-size: 12px; }
 .korekta .bylo { text-decoration: line-through; color: var(--przygasly); }
 .korekta .powinno { color: var(--zielony2); font-weight: 600; }

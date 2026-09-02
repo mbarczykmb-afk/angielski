@@ -386,14 +386,24 @@ export async function zakonczLekcje(env, uzytkownik, dzien, dane) {
   const wypowiedzi = (Array.isArray(dane.wypowiedzi) ? dane.wypowiedzi : []).map((w) => tekst(w, 1000));
   const korekty = Array.isArray(dane.korekty) ? dane.korekty.slice(0, 30) : [];
 
-  let podsumowanie = { ocena: 0, mocne: [], doPoprawy: [], komentarz: "", nowaSlowka: [] };
+  let podsumowanie = { ocena: 0, bledy: [], mocne: [], doPoprawy: [], komentarz: "", nowaSlowka: [] };
 
   if (wypowiedzi.length) {
     const system =
       "Jesteś lektorem angielskiego. Podsumuj dzisiejszą rozmowę polskiego ucznia na poziomie " +
-      `${uzytkownik.poziom || "A2"}. Bądź konkretny i życzliwy.\n` +
+      `${uzytkownik.poziom || "A2"}. Bądź konkretny i życzliwy.\n\n` +
+      "Uczeń MÓWIŁ, a jego wypowiedzi przeszły przez rozpoznawanie mowy — nie ma w nich " +
+      "interpunkcji, a pojedyncze słowa mogły zostać przekręcone przez sam mikrofon. " +
+      "NIE traktuj tego jako błędów językowych. Oceniaj dobór słów, gramatykę i naturalność, " +
+      "nie zapis.\n\n" +
+      'Najważniejsze jest pole "bledy": wypisz KONKRETNE potknięcia z tej rozmowy. ' +
+      'Dla każdego podaj "bylo" (co uczeń faktycznie powiedział, cytat), "powinno" ' +
+      '(poprawna wersja po angielsku) i "dlaczego" (krótkie wyjaśnienie po polsku — reguła, ' +
+      "nie ogólnik). Od 0 do 6 pozycji, od najważniejszego. Gdy uczeń mówił bez błędów, daj pustą tablicę.\n" +
+      'W "doPoprawy" pisz, nad czym pracować dalej — to wnioski, nie pojedyncze zdania.\n\n' +
       "Odpowiedz WYŁĄCZNIE poprawnym JSON-em:\n" +
-      '{"ocena":0-100,"mocne":["po polsku"],"doPoprawy":["po polsku"],' +
+      '{"ocena":0-100,"bledy":[{"bylo":"","powinno":"","dlaczego":""}],' +
+      '"mocne":["po polsku"],"doPoprawy":["po polsku"],' +
       '"komentarz":"2-3 zdania po polsku","nowaSlowka":[{"en":"","pl":"","przyklad":""}]}\n' +
       'W "nowaSlowka" daj 3-6 zwrotów, których uczniowi wyraźnie brakowało w tej rozmowie.';
 
