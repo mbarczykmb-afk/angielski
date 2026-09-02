@@ -2,7 +2,9 @@ name: Publikacja PWA na GitHub Pages
 
 on:
   push:
-    branches: [main, master]
+    # Gałąź robocza jest tu celowo: repozytorium nie ma jeszcze main,
+    # a publikacja ma działać od pierwszego dnia, nie dopiero po scaleniu
+    branches: [main, master, "claude/**"]
     paths: ["web/**", ".github/workflows/pages.yml"]
   workflow_dispatch:
 
