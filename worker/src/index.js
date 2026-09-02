@@ -55,6 +55,7 @@ async function trasuj(request, env, ctx) {
         baza: !!env.DB,
         klucz: !!env.ANTHROPIC_API_KEY,
         kodRejestracjiWymagany: !!env.KOD_REJESTRACJI,
+        gemini: !!env.GEMINI_API_KEY,
         dyskSkonfigurowany: !!(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET),
       },
       env

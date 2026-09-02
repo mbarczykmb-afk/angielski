@@ -17,7 +17,13 @@ DOZWOLONY_ORIGIN = "*"
 # Client ID jest jawny z natury, więc może zostać tutaj. Sekret idzie przez wrangler secret.
 GOOGLE_CLIENT_ID = ""
 
+# Model Gemini używany do tur rozmowy, gdy wybierzesz go w Ustawieniach.
+# Google zmienia nazwy modeli częściej niż wychodzą wersje tej aplikacji —
+# jeśli zobaczysz błąd "Gemini nie zna modelu", wpisz tutaj aktualną nazwę.
+GEMINI_MODEL = "gemini-3.7-flash"
+
 # Sekrety (NIE trzymamy ich w tym pliku):
 #   npx wrangler secret put ANTHROPIC_API_KEY   — klucz z console.anthropic.com
 #   npx wrangler secret put KOD_REJESTRACJI     — hasło do zakładania nowych profili (opcjonalne, ale zalecane)
 #   npx wrangler secret put GOOGLE_CLIENT_SECRET — sekret OAuth z Google Cloud Console (opcjonalne)
+#   npx wrangler secret put GEMINI_API_KEY      — klucz z aistudio.google.com (opcjonalne)

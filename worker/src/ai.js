@@ -2,6 +2,7 @@
 // Warstwa AI — rozmowa i generowanie materiałów przez Claude API
 // ============================================================
 import { BladApi, bezpieczneJson } from "./pomoc.js";
+import { wywolajGemini } from "./gemini.js";
 
 const API_URL = "https://api.anthropic.com/v1/messages";
 const API_VERSION = "2023-06-01";
@@ -10,12 +11,24 @@ const API_VERSION = "2023-06-01";
 export const MODEL_GLOWNY = "claude-opus-5";
 // Haiku 4.5 do tur rozmowy — krótsze pauzy między zdaniami i wyraźnie niższy koszt.
 export const MODEL_ROZMOWA = "claude-haiku-4-5";
+// Gemini jako jeszcze tańsza alternatywa dla samych tur rozmowy.
+export const DOSTAWCA_GEMINI = "gemini";
 
 /**
- * Jedno wywołanie modelu. Zwraca sklejony tekst z bloków typu "text".
- * opcje: { system, model, maxTokens, effort }
+ * Jedno wywołanie modelu. Zwraca sklejony tekst odpowiedzi.
+ * opcje: { system, model, maxTokens, effort, dostawca, json }
+ *
+ * Kieruje zapytanie do wybranego dostawcy — reszta aplikacji nie musi
+ * wiedzieć, który model odpowiada.
  */
 export async function wywolajAI(env, wiadomosci, opcje = {}) {
+  if (opcje.dostawca === DOSTAWCA_GEMINI) {
+    return wywolajGemini(env, wiadomosci, opcje);
+  }
+  return wywolajClaude(env, wiadomosci, opcje);
+}
+
+async function wywolajClaude(env, wiadomosci, opcje = {}) {
   const klucz = env.ANTHROPIC_API_KEY;
   if (!klucz) {
     throw new BladApi(500, "Worker nie ma klucza API. Ustaw go: npx wrangler secret put ANTHROPIC_API_KEY");
@@ -103,7 +116,10 @@ export function wyjmijJson(tekstOdpowiedzi, domyslne = null) {
  * dopytujemy model raz, twardo przypominając o formacie.
  */
 export async function wywolajAIJson(env, wiadomosci, opcje = {}, domyslne) {
-  const pierwsza = await wywolajAI(env, wiadomosci, opcje);
+  // Gemini potrafi wymusić poprawny JSON po swojej stronie — dajemy mu znać
+  const zJson = { ...opcje, json: true };
+
+  const pierwsza = await wywolajAI(env, wiadomosci, zJson);
   const wynik = wyjmijJson(pierwsza, null);
   if (wynik) return wynik;
 
@@ -112,7 +128,7 @@ export async function wywolajAIJson(env, wiadomosci, opcje = {}, domyslne) {
     { role: "assistant", content: pierwsza.slice(0, 500) || "..." },
     { role: "user", content: "Zwróć to samo wyłącznie jako poprawny JSON. Bez komentarza, bez znaczników ```." },
   ];
-  const druga = await wywolajAI(env, powtorka, opcje);
+  const druga = await wywolajAI(env, powtorka, zJson);
   const wynik2 = wyjmijJson(druga, null);
   if (wynik2) return wynik2;
 

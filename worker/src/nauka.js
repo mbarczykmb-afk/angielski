@@ -2,7 +2,7 @@
 // Rdzeń nauki — stan, test poziomujący, plan, lekcja, rozmowa, słówka
 // ============================================================
 import { BladApi, uuid, dzisISO, terazISO, dataPlus, roznicaDni, bezpieczneJson, tekst, liczba } from "./pomoc.js";
-import { wywolajAIJson, MODEL_GLOWNY, MODEL_ROZMOWA } from "./ai.js";
+import { wywolajAIJson, MODEL_GLOWNY, MODEL_ROZMOWA, DOSTAWCA_GEMINI } from "./ai.js";
 import { zapiszKopie } from "./kopie.js";
 
 // System Leitnera — odstęp w dniach dla pudełek 1..6
@@ -282,7 +282,14 @@ export async function czat(env, uzytkownik, dane) {
 
   const poziom = uzytkownik.poziom || "A2";
   const ustawienia = bezpieczneJson(uzytkownik.ustawienia, {});
-  const model = ustawienia.modelRozmowy === "opus" ? MODEL_GLOWNY : MODEL_ROZMOWA;
+  const wybor = ustawienia.modelRozmowy;
+
+  // Wybór dotyczy wyłącznie tur rozmowy — ocena poziomu, plan i podsumowania
+  // zawsze idą przez Opus 5, bo robi się je rzadko i muszą być dobre
+  const ustawieniaModelu =
+    wybor === "opus" ? { model: MODEL_GLOWNY, effort: "medium" }
+    : wybor === "gemini" ? { dostawca: DOSTAWCA_GEMINI }
+    : { model: MODEL_ROZMOWA };
 
   const system =
     "Jesteś native speakerem i cierpliwym partnerem do rozmowy po angielsku. " +
@@ -309,7 +316,7 @@ export async function czat(env, uzytkownik, dane) {
     .map((w) => ({ role: w.role === "assistant" ? "assistant" : "user", content: tekst(w.content, 2000) }));
   wiadomosci.push({ role: "user", content: wiadomosc });
 
-  const odp = await wywolajAIJson(env, wiadomosci, { system, model, maxTokens: 1000 }, {
+  const odp = await wywolajAIJson(env, wiadomosci, { system, maxTokens: 1000, ...ustawieniaModelu }, {
     odpowiedz: "Sorry, could you say that again?",
     korekta: null,
     noweSlowa: [],

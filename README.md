@@ -121,12 +121,35 @@ Cloudflare i GitHub Pages: **0 zł**. Płacisz wyłącznie za wywołania modelu:
 
 | Co | Model | Kiedy |
 |---|---|---|
-| Tury rozmowy | Haiku 4.5 | co wiadomość — szybki, żeby nie było pauz w konwersacji |
+| Tury rozmowy | Haiku 4.5 (domyślnie) | co wiadomość — szybki, żeby nie było pauz w konwersacji |
 | Ocena poziomu, plan 30 dni, materiał lekcji, podsumowanie | Opus 5 | rzadko, ale musi być dobre |
 
 Przy codziennej nauce po ~15 minut to rząd wielkości **kilkunastu złotych miesięcznie**.
-W **Więcej → Model rozmowy** możesz przełączyć tury rozmowy na Opus 5 — naturalniejsza rozmowa
-i lepsze korekty, ale kilkukrotnie drożej.
+
+W **Więcej → Model rozmowy** przełączasz sam silnik rozmowy. Ocena poziomu, plan i podsumowania
+zostają na Opus 5 niezależnie od wyboru — robi się je rzadko, a ważą najwięcej.
+
+| Wybór | Dostawca | Kiedy ma sens |
+|---|---|---|
+| Haiku 4.5 | Anthropic | domyślny — dobre korekty, krótkie pauzy |
+| Gemini Flash | Google | najniższy koszt tury; wymaga klucza Gemini |
+| Opus 5 | Anthropic | najlepsza rozmowa, kilkukrotnie drożej |
+
+### Gemini jako tańszy silnik rozmowy (opcjonalne)
+
+1. Weź klucz z **aistudio.google.com** → *Get API key*.
+2. Zapisz go jako sekret Workera:
+   ```bash
+   npx wrangler secret put GEMINI_API_KEY
+   npx wrangler deploy
+   ```
+3. W aplikacji: **Więcej → Model rozmowy → Najtańszy — Gemini Flash**.
+
+Nazwa modelu siedzi w `worker/wrangler.toml` jako `GEMINI_MODEL`. Google zmienia je częściej,
+niż wychodzą wersje tej aplikacji — jeśli zobaczysz błąd *„Gemini nie zna modelu"*, wpisz tam
+aktualną nazwę z ich cennika i wdróż ponownie. Nie trzeba ruszać kodu.
+
+Bez klucza Gemini opcja nadal jest widoczna, ale Ustawienia ostrzegą, że rozmowa nie ruszy.
 
 ---
 

@@ -1,5 +1,6 @@
 import { dzisISO, dataPlus, roznicaDni, bezpieczneJson, tekst, liczba } from "../src/pomoc.js";
 import { wyjmijJson } from "../src/ai.js";
+import { naFormatGemini } from "../src/gemini.js";
 
 let bledy = 0;
 function sprawdz(nazwa, wynik, oczekiwane) {
@@ -50,6 +51,29 @@ for (let i=0;i<8;i++) pudelko = Math.min(ODSTEPY.length, pudelko+1);
 sprawdz("Leitner nie przekracza 6 pudełek", pudelko, 6);
 sprawdz("Leitner odstęp ostatniego pudełka", ODSTEPY[pudelko-1], 32);
 sprawdz("Leitner reset po błędzie", ODSTEPY[1-1], 1);
+
+// --- Konwersja rozmowy na format Gemini ---
+sprawdz("Gemini: rola assistant staje się model",
+  naFormatGemini([{role:"user",content:"hi"},{role:"assistant",content:"hello"}]),
+  [{role:"user",parts:[{text:"hi"}]},{role:"model",parts:[{text:"hello"}]}]);
+
+// Nasza rozmowa otwiera się kwestią lektora, a Gemini wymaga tury użytkownika
+sprawdz("Gemini: wiodąca tura lektora jest odcinana",
+  naFormatGemini([{role:"assistant",content:"Hi! What can I get you?"},{role:"user",content:"a coffee"}]),
+  [{role:"user",parts:[{text:"a coffee"}]}]);
+
+sprawdz("Gemini: kilka wiodących tur lektora też",
+  naFormatGemini([{role:"assistant",content:"a"},{role:"assistant",content:"b"},{role:"user",content:"c"}]),
+  [{role:"user",parts:[{text:"c"}]}]);
+
+sprawdz("Gemini: sama tura lektora daje pustą rozmowę",
+  naFormatGemini([{role:"assistant",content:"a"}]), []);
+
+sprawdz("Gemini: pusta historia nie wywala się",
+  naFormatGemini([]), []);
+
+sprawdz("Gemini: brakująca treść staje się pustym tekstem",
+  naFormatGemini([{role:"user"}]), [{role:"user",parts:[{text:""}]}]);
 
 console.log(bledy ? `\n${bledy} błędów` : "\nWszystkie testy przeszły");
 process.exit(bledy ? 1 : 0);

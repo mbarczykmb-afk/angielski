@@ -1,6 +1,9 @@
 /* ============================================================
-   Ustawienia — profil, mowa, kopie zapasowe
+   Ustawienia — profil, mowa, model, kopie zapasowe
    ============================================================ */
+
+// Czego Worker faktycznie ma skonfigurowane — sprawdzane raz, przy pierwszym wejściu
+var Ustawienia = { geminiDostepny: null };
 
 function rysujUstawienia() {
   var widok = document.getElementById("w-ustawienia");
@@ -32,10 +35,12 @@ function rysujUstawienia() {
     /* --- Model --- */
     '<div class="karta"><h3>Model rozmowy</h3>' +
     '<select id="pole-model">' +
-    '<option value="haiku"' + (ust.modelRozmowy !== "opus" ? " selected" : "") + ">Szybki — Haiku 4.5 (zalecany)</option>" +
-    '<option value="opus"' + (ust.modelRozmowy === "opus" ? " selected" : "") + ">Dokładny — Opus 5 (droższy)</option>" +
+    '<option value="haiku"' + (ust.modelRozmowy === "haiku" || !ust.modelRozmowy ? " selected" : "") + ">Zalecany — Haiku 4.5 (Anthropic)</option>" +
+    '<option value="gemini"' + (ust.modelRozmowy === "gemini" ? " selected" : "") + ">Najtańszy — Gemini Flash (Google)</option>" +
+    '<option value="opus"' + (ust.modelRozmowy === "opus" ? " selected" : "") + ">Najdokładniejszy — Opus 5 (Anthropic)</option>" +
     "</select>" +
-    '<p class="mini" style="margin-top:8px">Dotyczy tylko tur rozmowy. Ocena poziomu, plan i podsumowania lekcji zawsze idą przez Opus 5.</p></div>' +
+    '<p class="mini" style="margin-top:8px" id="opis-modelu"></p>' +
+    '<p class="mini" style="margin-top:6px">Dotyczy tylko tur rozmowy. Ocena poziomu, plan i podsumowania lekcji zawsze idą przez Opus 5.</p></div>' +
 
     /* --- Kopie zapasowe --- */
     '<div class="karta"><h3>Kopia zapasowa</h3>' +
@@ -66,6 +71,26 @@ function rysujUstawienia() {
   podepnijUstawienia();
   wczytajListeKopii();
   wczytajDysk();
+  sprawdzDostawcow();
+}
+
+// Pytamy Workera, czy ma klucz Gemini — inaczej użytkownik wybrałby model,
+// który wysypie się dopiero w środku rozmowy
+async function sprawdzDostawcow() {
+  if (Ustawienia.geminiDostepny !== null) return;
+
+  try {
+    var zdrowie = await Api.wywolaj("/api/health");
+    Ustawienia.geminiDostepny = !!zdrowie.gemini;
+
+    var opis = document.getElementById("opis-modelu");
+    var pole = document.getElementById("pole-model");
+    if (opis && pole && pole.value === "gemini" && !Ustawienia.geminiDostepny) {
+      opis.textContent = "⚠ Worker nie ma klucza Gemini — rozmowa nie ruszy. Dodaj sekret GEMINI_API_KEY albo wybierz inny model.";
+    }
+  } catch (e) {
+    // Brak odpowiedzi nie jest powodem do straszenia — zostawiamy stan nieznany
+  }
 }
 
 function przelacznik(id, etykieta, wlaczony) {
@@ -105,6 +130,30 @@ function podepnijUstawienia() {
   ["ust-glos", "pole-model", "pole-cel-dzienny"].forEach(function (id) {
     document.getElementById(id).onchange = zapisz;
   });
+
+  /* --- Opis wybranego modelu --- */
+
+  var OPISY = {
+    haiku: "Szybki i tani. Dobre korekty błędów, krótkie pauzy w rozmowie.",
+    gemini: "Najniższy koszt tury. Wymaga klucza Gemini w Workerze.",
+    opus: "Najlepsza rozmowa i najcelniejsze korekty, kilkukrotnie drożej.",
+  };
+
+  var poleModelu = document.getElementById("pole-model");
+
+  function opiszModel() {
+    var opis = OPISY[poleModelu.value] || "";
+
+    // Wybór Gemini bez klucza w Workerze kończyłby się błędem dopiero
+    // w trakcie rozmowy — lepiej ostrzec od razu
+    if (poleModelu.value === "gemini" && Ustawienia.geminiDostepny === false) {
+      opis = "⚠ Worker nie ma klucza Gemini — rozmowa nie ruszy. Dodaj sekret GEMINI_API_KEY albo wybierz inny model.";
+    }
+    document.getElementById("opis-modelu").textContent = opis;
+  }
+
+  poleModelu.addEventListener("change", opiszModel);
+  opiszModel();
 
   var tempo = document.getElementById("pole-tempo");
   tempo.oninput = function () {
