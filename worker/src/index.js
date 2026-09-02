@@ -19,6 +19,7 @@ import {
   wyjasnijSlowko,
 } from "./nauka.js";
 import { listaKopii, utworzKopieRecznie, eksportuj, przywroc, przywrocZMigawki } from "./kopie.js";
+import { diagnostyka } from "./ai.js";
 import {
   rozpocznijPolaczenie,
   obsluzPowrot,
@@ -66,6 +67,13 @@ async function trasuj(request, env, ctx) {
   // Tożsamość profilu niesie jednorazowy token stanu wystawiony przy starcie.
   if (sciezka === "/api/dysk/callback" && metoda === "GET") {
     return obsluzPowrot(env, request);
+  }
+
+  // Diagnostyka połączenia z modelem. Bez sesji, bo służy właśnie sytuacjom,
+  // w których aplikacja nie działa. Klucz nie jest ujawniany — tylko jego
+  // kształt (długość, początek, obecność białych znaków).
+  if (sciezka === "/api/diagnostyka" && metoda === "GET") {
+    return json(await diagnostyka(env), env);
   }
 
   if (sciezka === "/api/auth/profile" && metoda === "GET") {

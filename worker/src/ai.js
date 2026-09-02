@@ -136,6 +136,72 @@ async function wywolajClaude(env, wiadomosci, opcje = {}) {
 }
 
 /**
+ * Diagnostyka połączenia z API modelu.
+ *
+ * Wykonuje najprostsze możliwe zapytanie i zwraca wszystko, co potrzebne do
+ * ustalenia przyczyny: status, nagłówki odpowiedzi (mówią, KTO odrzucił),
+ * treść błędu oraz kształt klucza — bez ujawniania go samego.
+ */
+export async function diagnostyka(env) {
+  const klucz = env.ANTHROPIC_API_KEY || "";
+
+  // Klucz opisujemy, nie pokazujemy. Wystarczy, by wykryć typowe pomyłki:
+  // pusty, ze spacją, z cudzysłowem albo wklejony razem z fragmentem komendy.
+  const oKluczu = {
+    ustawiony: !!klucz,
+    dlugosc: klucz.length,
+    poczatek: klucz.slice(0, 7),
+    zaczynaSieOdSkAnt: klucz.startsWith("sk-ant-"),
+    maBialeZnaki: /\s/.test(klucz),
+    maCudzyslowy: /["']/.test(klucz),
+    rozniSieOdPrzycietego: klucz !== klucz.trim(),
+  };
+
+  const payload = {
+    model: MODEL_GLOWNY,
+    max_tokens: 16,
+    messages: [{ role: "user", content: "hi" }],
+  };
+
+  let wynik;
+  try {
+    const odp = await fetch(API_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": klucz,
+        "anthropic-version": API_VERSION,
+      },
+      body: JSON.stringify(payload),
+    });
+
+    const naglowki = {};
+    odp.headers.forEach((wartosc, nazwa) => {
+      naglowki[nazwa] = wartosc;
+    });
+
+    const tresc = await odp.text();
+
+    wynik = {
+      status: odp.status,
+      ok: odp.ok,
+      dlugoscOdpowiedzi: tresc.length,
+      naglowki,
+      tresc: tresc.slice(0, 800),
+    };
+  } catch (e) {
+    wynik = { wyjatek: e.name + ": " + e.message };
+  }
+
+  return {
+    model: MODEL_GLOWNY,
+    wyslanePola: Object.keys(payload),
+    klucz: oKluczu,
+    odpowiedz: wynik,
+  };
+}
+
+/**
  * Wyciąga JSON z odpowiedzi modelu. Model bywa, że opakuje go w ```json ... ```
  * albo dopisze zdanie wstępu — obcinamy do pierwszego nawiasu i ostatniego domknięcia.
  */
