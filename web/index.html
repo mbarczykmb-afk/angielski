@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0d1117">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Angielski AI">
+<meta name="description" content="Nauka angielskiego przez rozmowę z lektorem AI: ocena poziomu, plan 30 dni, powtórki słówek.">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="icon" href="./icons/ikona-192.png">
+<link rel="apple-touch-icon" href="./icons/ikona-192.png">
+<link rel="stylesheet" href="./app.css">
+<title>Angielski AI</title>
+</head>
+<body>
+
+<div id="offline" class="offline">Brak połączenia — rozmowa niedostępna</div>
+
+<!-- ============================================================
+     EKRAN 1 — LOGOWANIE / WYBÓR PROFILU
+     ============================================================ -->
+<div id="ekran-logowanie" class="ekran aktywny">
+  <div class="gora"><h1>Angielski AI</h1></div>
+  <div class="widok aktywny">
+
+    <div id="blok-adres" class="karta" hidden>
+      <h2>Pierwsze uruchomienie</h2>
+      <p class="podpis">Podaj adres swojego Workera — dostaniesz go po komendzie <code>npx wrangler deploy</code>.</p>
+      <label for="pole-adres">Adres API</label>
+      <input id="pole-adres" type="url" inputmode="url" placeholder="https://angielski-ai.twoj-login.workers.dev" autocomplete="off">
+      <button class="btn" id="btn-zapisz-adres">Połącz</button>
+    </div>
+
+    <div id="blok-profile" class="karta" hidden>
+      <h2>Kto się dzisiaj uczy?</h2>
+      <div id="lista-profili"></div>
+      <button class="btn drugi" id="btn-pokaz-rejestracje" style="margin-top:10px">+ Nowy profil</button>
+    </div>
+
+    <div id="blok-pin" class="karta" hidden>
+      <h2 id="pin-naglowek">PIN</h2>
+      <label for="pole-pin">Wpisz PIN profilu</label>
+      <input id="pole-pin" type="password" inputmode="numeric" maxlength="8" autocomplete="off">
+      <button class="btn" id="btn-zaloguj">Wejdź</button>
+      <button class="btn drugi" id="btn-anuluj-pin">Wróć</button>
+    </div>
+
+    <div id="blok-rejestracja" class="karta" hidden>
+      <h2>Nowy profil</h2>
+      <label for="pole-imie">Imię</label>
+      <input id="pole-imie" type="text" maxlength="30" autocomplete="off">
+      <label for="pole-nowy-pin">PIN (opcjonalnie, 4–8 cyfr)</label>
+      <input id="pole-nowy-pin" type="password" inputmode="numeric" maxlength="8" autocomplete="off">
+      <label for="pole-cel">Ile minut dziennie chcesz się uczyć?</label>
+      <select id="pole-cel">
+        <option value="10">10 minut</option>
+        <option value="15" selected>15 minut</option>
+        <option value="20">20 minut</option>
+        <option value="30">30 minut</option>
+      </select>
+      <div id="blok-kod" hidden>
+        <label for="pole-kod">Kod rejestracji</label>
+        <input id="pole-kod" type="password" autocomplete="off">
+      </div>
+      <button class="btn" id="btn-zarejestruj">Załóż profil</button>
+      <button class="btn drugi" id="btn-anuluj-rejestracje">Wróć</button>
+    </div>
+
+    <p class="mini srodek" style="margin-top:18px">
+      <a href="#" id="link-zmien-adres" style="color:var(--przygasly)">Zmień adres serwera</a>
+    </p>
+  </div>
+</div>
+
+<!-- ============================================================
+     EKRAN 2 — TEST POZIOMUJĄCY
+     ============================================================ -->
+<div id="ekran-test" class="ekran">
+  <div class="gora">
+    <h1 id="test-naglowek">Test poziomujący</h1>
+    <div class="odznaki"><span class="odznaka" id="test-licznik">1 / 12</span></div>
+  </div>
+  <div class="widok aktywny">
+
+    <div id="test-powitanie" class="karta akcent">
+      <h2>Zanim zaczniemy 👋</h2>
+      <p class="podpis">Krótki test pokaże, na jakim jesteś poziomie. Na tej podstawie ułożę Ci plan 30 dni rozmów dopasowany do Twoich braków.</p>
+      <p class="podpis" style="margin-top:8px">12 zadań, jakieś 5 minut. Przy pytaniach otwartych możesz mówić albo pisać — odpowiadaj tak, jak umiesz, chodzi o realny obraz, nie o wynik.</p>
+      <button class="btn" id="btn-start-testu" style="margin-top:12px">Zaczynamy</button>
+    </div>
+
+    <div id="test-pytanie" class="karta" hidden>
+      <h3 id="test-poziom">A1</h3>
+      <p id="test-tresc" style="font-size:17px;margin-bottom:14px"></p>
+      <div id="test-opcje"></div>
+      <div id="test-otwarte" hidden>
+        <textarea id="test-odpowiedz" rows="4" placeholder="Odpowiedz po angielsku..."></textarea>
+        <button class="btn drugi maly" id="btn-test-mikrofon" style="margin-top:8px;width:100%">🎤 Powiedz odpowiedź</button>
+      </div>
+      <button class="btn" id="btn-test-dalej" style="margin-top:12px">Dalej</button>
+    </div>
+
+    <div id="test-wynik" class="karta" hidden></div>
+  </div>
+</div>
+
+<!-- ============================================================
+     EKRAN 3 — APLIKACJA
+     ============================================================ -->
+<div id="ekran-glowny" class="ekran">
+  <div class="gora">
+    <h1 id="naglowek-widoku">Dziś</h1>
+    <div class="odznaki">
+      <span class="odznaka poziom" id="odznaka-poziom">—</span>
+      <span class="odznaka passa" id="odznaka-passa">🔥 0</span>
+      <span class="odznaka xp" id="odznaka-xp">0 XP</span>
+    </div>
+  </div>
+
+  <!-- DZIŚ -->
+  <div id="w-dzis" class="widok aktywny"></div>
+
+  <!-- ROZMOWA -->
+  <div id="w-rozmowa" class="widok">
+    <div id="rozmowa-brak" class="pusto">Wejdź w zakładkę <b>Dziś</b> i zacznij lekcję.</div>
+    <div id="rozmowa-tresc" hidden>
+      <div class="karta" id="rozmowa-material"></div>
+      <div id="czat-lista"></div>
+      <button class="btn drugi" id="btn-zakoncz-lekcje" style="margin-top:6px">✓ Zakończ lekcję i podsumuj</button>
+    </div>
+  </div>
+
+  <!-- SŁOWA -->
+  <div id="w-slowa" class="widok"></div>
+
+  <!-- POSTĘP -->
+  <div id="w-postep" class="widok"></div>
+
+  <!-- USTAWIENIA -->
+  <div id="w-ustawienia" class="widok"></div>
+
+  <!-- Pasek wprowadzania rozmowy (tylko w zakładce Rozmowa) -->
+  <div id="czat-wejscie" hidden>
+    <button class="mikrofon" id="btn-mikrofon" title="Mów po angielsku">🎤</button>
+    <textarea id="czat-pole" rows="1" placeholder="Napisz po angielsku..."></textarea>
+    <button class="wyslij" id="btn-wyslij" title="Wyślij">➤</button>
+  </div>
+
+  <nav class="nawigacja">
+    <button data-widok="dzis" class="aktywny"><span class="ikona">🏠</span>Dziś</button>
+    <button data-widok="rozmowa"><span class="ikona">💬</span>Rozmowa</button>
+    <button data-widok="slowa"><span class="ikona">📚</span>Słowa<span class="kropka" id="kropka-slowa" hidden></span></button>
+    <button data-widok="postep"><span class="ikona">📊</span>Postęp</button>
+    <button data-widok="ustawienia"><span class="ikona">⚙️</span>Więcej</button>
+  </nav>
+</div>
+
+<div id="toast"></div>
+<div id="spinner"><div class="kolo"></div><div id="spinner-tekst"></div></div>
+
+<script src="./js/rdzen.js"></script>
+<script src="./js/api.js"></script>
+<script src="./js/mowa.js"></script>
+<script src="./js/logowanie.js"></script>
+<script src="./js/test.js"></script>
+<script src="./js/dzis.js"></script>
+<script src="./js/rozmowa.js"></script>
+<script src="./js/slowa.js"></script>
+<script src="./js/postep.js"></script>
+<script src="./js/ustawienia.js"></script>
+<script src="./js/app.js"></script>
+</body>
+</html>

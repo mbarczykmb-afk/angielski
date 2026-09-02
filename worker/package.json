@@ -1,0 +1,19 @@
+{
+  "name": "angielski-ai-worker",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Backend API aplikacji Angielski AI — Cloudflare Worker + D1",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "baza:utworz": "wrangler d1 create angielski-ai",
+    "baza:migruj": "wrangler d1 execute angielski-ai --remote --file=./schema.sql",
+    "baza:migruj-lokalnie": "wrangler d1 execute angielski-ai --local --file=./schema.sql",
+    "test": "node test/logika.test.mjs",
+    "tail": "wrangler tail"
+  },
+  "devDependencies": {
+    "wrangler": "^4.20.0"
+  }
+}

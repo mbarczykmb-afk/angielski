@@ -1,0 +1,18 @@
+name = "angielski-ai"
+main = "src/index.js"
+compatibility_date = "2026-01-15"
+
+# Baza D1 — po `npx wrangler d1 create angielski-ai` wklej tu wypisane database_id
+[[d1_databases]]
+binding = "DB"
+database_name = "angielski-ai"
+database_id = "WKLEJ_TUTAJ_ID_BAZY"
+
+[vars]
+# Adres, z którego wolno wołać API. Po włączeniu GitHub Pages wpisz tu swój adres,
+# np. "https://mbarczykmb-afk.github.io" — dopóki jest "*", API przyjmuje wszystkich.
+DOZWOLONY_ORIGIN = "*"
+
+# Sekrety (NIE trzymamy ich w tym pliku):
+#   npx wrangler secret put ANTHROPIC_API_KEY   — klucz z console.anthropic.com
+#   npx wrangler secret put KOD_REJESTRACJI     — hasło do zakładania nowych profili (opcjonalne, ale zalecane)
