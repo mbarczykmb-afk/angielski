@@ -20,6 +20,10 @@ import {
 } from "./nauka.js";
 import { listaKopii, utworzKopieRecznie, eksportuj, przywroc, przywrocZMigawki } from "./kopie.js";
 import { diagnostyka } from "./ai.js";
+
+// Znacznik wersji kodu — widoczny w /api/health.
+// Pozwala sprawdzic golym okiem, ktora wersja naprawde dziala na serwerze.
+const WERSJA_KODU = "2026-09-02-diagnostyka";
 import {
   rozpocznijPolaczenie,
   obsluzPowrot,
@@ -53,6 +57,7 @@ async function trasuj(request, env, ctx) {
       {
         ok: true,
         usluga: "angielski-ai",
+        wersja: WERSJA_KODU,
         baza: !!env.DB,
         klucz: !!env.ANTHROPIC_API_KEY,
         kodRejestracjiWymagany: !!env.KOD_REJESTRACJI,
