@@ -2,11 +2,13 @@ name = "angielski-ai"
 main = "src/index.js"
 compatibility_date = "2026-01-15"
 
-# Baza D1 — po `npx wrangler d1 create angielski-ai` wklej tu wypisane database_id
+# Baza D1. Identyfikator jest jawny z natury — to nazwa zasobu, nie poswiadczenie:
+# bez dostepu do konta Cloudflare nic nie daje. Tu musi byc, zeby automatyczne
+# wdrozenie z GitHuba wiedzialo, do ktorej bazy sie podpiac.
 [[d1_databases]]
 binding = "DB"
 database_name = "angielski-ai"
-database_id = "WKLEJ_TUTAJ_ID_BAZY"
+database_id = "4a74fd4b-d4e8-4695-a7da-925b07600f1d"
 
 [vars]
 # Adres, z którego wolno wołać API. Po włączeniu GitHub Pages wpisz tu swój adres,
