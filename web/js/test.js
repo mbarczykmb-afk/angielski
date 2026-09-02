@@ -27,6 +27,8 @@ function podepnijTest() {
 
 async function startTestu() {
   spinner(true, "Układam test pod Ciebie...");
+  pokazBladTestu("");
+
   try {
     var odp = await Api.wyslij("/api/test/start", {});
     Test.pytania = odp.pytania || [];
@@ -37,10 +39,35 @@ async function startTestu() {
     document.getElementById("test-wynik").hidden = true;
     pokazPytanie();
   } catch (e) {
-    toast(e.message, false);
+    // Błąd zostaje na ekranie — znikający toast nie daje szansy go przeczytać
+    // ani przepisać, a to zwykle jedyny trop przy kłopotach z konfiguracją
+    pokazBladTestu(e.message);
+    toast("Nie udało się rozpocząć testu", false);
   } finally {
     spinner(false);
   }
+}
+
+function pokazBladTestu(wiadomosc) {
+  var blok = document.getElementById("test-blad");
+
+  if (!wiadomosc) {
+    if (blok) blok.remove();
+    return;
+  }
+
+  if (!blok) {
+    blok = document.createElement("div");
+    blok.id = "test-blad";
+    blok.className = "karta";
+    blok.style.borderColor = "var(--czerwony)";
+    document.getElementById("test-powitanie").after(blok);
+  }
+
+  blok.innerHTML =
+    '<h3 style="color:var(--czerwony)">Coś nie zadziałało</h3>' +
+    '<p style="word-break:break-word">' + esc(wiadomosc) + "</p>" +
+    '<p class="mini" style="margin-top:10px">Skopiuj tę treść, jeśli będziesz szukać przyczyny.</p>';
 }
 
 function pokazPytanie() {

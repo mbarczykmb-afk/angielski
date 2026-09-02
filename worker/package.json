@@ -10,7 +10,7 @@
     "baza:utworz": "wrangler d1 create angielski-ai",
     "baza:migruj": "wrangler d1 execute angielski-ai --remote --file=./schema.sql",
     "baza:migruj-lokalnie": "wrangler d1 execute angielski-ai --local --file=./schema.sql",
-    "test": "node test/logika.test.mjs",
+    "test": "node test/logika.test.mjs && node test/ponowienie.test.mjs",
     "tail": "wrangler tail"
   },
   "devDependencies": {

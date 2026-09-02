@@ -49,22 +49,39 @@ async function wywolajClaude(env, wiadomosci, opcje = {}) {
     payload.output_config = { effort: opcje.effort || "medium" };
   }
 
-  let odp;
-  try {
-    odp = await fetch(API_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": klucz,
-        "anthropic-version": API_VERSION,
-      },
-      body: JSON.stringify(payload),
-    });
-  } catch (e) {
-    throw new BladApi(502, "Nie udało się połączyć z API modelu: " + e.message);
+  async function wyslij(cialo) {
+    let odpowiedz;
+    try {
+      odpowiedz = await fetch(API_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": klucz,
+          "anthropic-version": API_VERSION,
+        },
+        body: JSON.stringify(cialo),
+      });
+    } catch (e) {
+      throw new BladApi(502, "Nie udało się połączyć z API modelu: " + e.message);
+    }
+    return { odpowiedz, tresc: await odpowiedz.text() };
   }
 
-  const body = await odp.text();
+  let { odpowiedz: odp, tresc: body } = await wyslij(payload);
+
+  // Adaptacyjne myślenie i sterowanie wysiłkiem nie są dostępne na każdym koncie
+  // ani w każdym planie. Zamiast wywracać naukę na parametrze, który tylko
+  // podnosi jakość, ponawiamy raz bez niego — lepiej działać nieco prościej
+  // niż nie działać wcale. Odrzucenie ląduje w logach, żeby dało się je poznać.
+  if (odp.status === 400 && payload.thinking) {
+    console.error("Anthropic odrzuciło parametry rozszerzone, ponawiam bez nich:", body.slice(0, 600));
+
+    const uproszczony = { ...payload };
+    delete uproszczony.thinking;
+    delete uproszczony.output_config;
+
+    ({ odpowiedz: odp, tresc: body } = await wyslij(uproszczony));
+  }
 
   if (!odp.ok) {
     const blad = bezpieczneJson(body, null);
