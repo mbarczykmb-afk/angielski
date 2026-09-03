@@ -240,6 +240,23 @@ label { display: block; font-size: 12px; color: var(--przygasly); margin: 10px 0
   padding: 9px 12px;
   font-size: 13px;
 }
+/* Wzor do powtorzenia — wyroznia sie z rozmowy, bo to moment cwiczenia,
+   nie kolejna wymiana zdan */
+.wzor {
+  align-self: stretch;
+  background: rgba(59, 130, 246, .1);
+  border: 1px solid var(--niebieski);
+  border-radius: 14px;
+  padding: 12px 14px;
+  text-align: center;
+}
+.wzor > b { color: var(--niebieski); font-size: 12px; text-transform: uppercase; letter-spacing: .5px; }
+.wzor .fraza { font-size: 19px; font-weight: 600; margin: 8px 0 10px; line-height: 1.35; }
+.wzor .btn { width: auto; margin: 0 auto; }
+.wzor .uwaga-wzoru { color: var(--zolty); font-size: 13px; margin-top: 9px; }
+.wzor.udane { border-color: var(--zielony); background: rgba(29, 158, 117, .12); }
+.wzor.udane > b::after { content: " ✓"; color: var(--zielony2); }
+
 /* Blad w podsumowaniu: cytat, poprawna wersja, powod */
 .blad {
   background: var(--tlo3);

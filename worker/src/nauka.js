@@ -322,9 +322,23 @@ export async function czat(env, uzytkownik, dane) {
     "8. Jeśli uczeń odezwie się po polsku, wróć do angielskiego i podaj mu zwrot, którego szukał.\n" +
     '9. "noweSlowa" wypełniaj tylko wtedy, gdy sam użyłeś słowa spoza poziomu ucznia.\n' +
     '10. "ocena" to 0-100: jak dobra komunikacyjnie była TA wypowiedź ucznia.\n\n' +
+    "POWTARZANIE ZA WZOREM — najważniejszy mechanizm nauki mówienia:\n" +
+    'Gdy uczeń popełni błąd wart przećwiczenia, wypełnij "doPowtorzenia" poprawną frazą po angielsku ' +
+    "(krótką, do 12 słów — tyle da się powtórzyć z pamięci).\n" +
+    'Wtedy w polu "odpowiedz" NAJPIERW popraw go po angielsku i poproś o powtórzenie, ' +
+    'na przykład: "Almost! We say: I\'d like a coffee, please. Can you say that?" — ' +
+    "i wyjątkowo NIE kończ tej wypowiedzi pytaniem o treść rozmowy, bo uczeń ma teraz powtarzać, " +
+    "nie odpowiadać.\n" +
+    'Gdy nie ma czego ćwiczyć, ustaw "doPowtorzenia": null i prowadź rozmowę normalnie.\n' +
+    "Nie żądaj powtórzenia częściej niż co druga wypowiedź — inaczej rozmowa zamienia się w musztrę.\n\n" +
+    (dane.powtorzenie
+      ? "UWAGA: uczeń właśnie POWTARZAŁ frazę, o którą prosiłeś. Krótko go pochwal i NATYCHMIAST " +
+        'wróć do rozmowy pytaniem o jej treść. Nie poprawiaj tej powtórki i nie proś o kolejną — ' +
+        'ustaw "korekta": null oraz "doPowtorzenia": null.\n\n'
+      : "") +
     "Odpowiedz WYŁĄCZNIE poprawnym JSON-em:\n" +
     '{"odpowiedz":"...","korekta":{"bylo":"...","powinno":"...","dlaczego":"..."},' +
-    '"noweSlowa":[{"en":"","pl":""}],"ocena":75}\n' +
+    '"doPowtorzenia":"...","noweSlowa":[{"en":"","pl":""}],"ocena":75}\n' +
     'Gdy nie ma czego poprawiać, ustaw "korekta": null.';
 
   // Ostatnie 8 wymian wystarczy na kontekst i trzyma koszt w ryzach
@@ -337,6 +351,7 @@ export async function czat(env, uzytkownik, dane) {
   const odp = await wywolajAIJson(env, wiadomosci, { system, maxTokens: 1000, ...ustawieniaModelu }, {
     odpowiedz: "Sorry, could you say that again?",
     korekta: null,
+    doPowtorzenia: null,
     noweSlowa: [],
     ocena: 0,
   });
@@ -362,6 +377,8 @@ export async function czat(env, uzytkownik, dane) {
   return {
     odpowiedz: tekst(odp.odpowiedz, 4000),
     korekta: odp.korekta || null,
+    // Fraza do powtórzenia na głos. Krótka, bo dłuższej nikt nie powtórzy z pamięci.
+    doPowtorzenia: dane.powtorzenie ? null : tekst(odp.doPowtorzenia, 200) || null,
     noweSlowa: Array.isArray(odp.noweSlowa) ? odp.noweSlowa.slice(0, 5) : [],
     ocena: liczba(odp.ocena),
   };

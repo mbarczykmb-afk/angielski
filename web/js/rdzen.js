@@ -11,6 +11,8 @@ var App = {
   startLekcji: 0,      // znacznik czasu rozpoczęcia
   rozmowaTrwa: false,  // czy pętla mówienia ma się sama podtrzymywać
   ostatniaKwestia: "", // do powtórzenia na żądanie
+  doPowtorzenia: "",   // fraza, którą uczeń ma teraz powtórzyć za lektorem
+  probyPowtorzenia: 0, // ile razy próbował — po dwóch wracamy do rozmowy
   widok: "dzis",
 };
 
@@ -120,4 +122,34 @@ function odswiezOdznaki() {
 function liczbaDoPowtorki() {
   if (!App.stan) return 0;
   return App.stan.slowka.filter(function (s) { return s.doPowtorki; }).length;
+}
+
+/* --- Ocena powtórzenia za wzorem --- */
+
+// Zapis z mikrofonu nie ma interpunkcji i bywa niedoskonały, więc porównujemy
+// same słowa, nie znaki. Liczy się to, ile słów wzoru uczeń faktycznie wypowiedział.
+function naSlowa(tekst) {
+  return String(tekst || "")
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}\s']/gu, " ")
+    .split(/\s+/)
+    .filter(Boolean);
+}
+
+function podobienstwo(powiedziane, wzor) {
+  var slowaWzoru = naSlowa(wzor);
+  if (!slowaWzoru.length) return 0;
+
+  var pozostale = naSlowa(powiedziane);
+  var trafione = 0;
+
+  for (var i = 0; i < slowaWzoru.length; i++) {
+    var gdzie = pozostale.indexOf(slowaWzoru[i]);
+    if (gdzie > -1) {
+      trafione++;
+      pozostale.splice(gdzie, 1); // każde słowo liczy się raz
+    }
+  }
+
+  return trafione / slowaWzoru.length;
 }

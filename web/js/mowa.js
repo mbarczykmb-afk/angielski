@@ -36,7 +36,7 @@ var Mowa = {
    * onKoniec — wołane, gdy lektor skończy. Na tym opiera się rozmowa bez rąk:
    * mikrofon włącza się dopiero wtedy, żeby nie nagrywać własnego głosu lektora.
    */
-  powiedz: function (tekst, onKoniec) {
+  powiedz: function (tekst, onKoniec, wolniej) {
     var ustawienia = (App.stan && App.stan.user.ustawienia) || {};
 
     if (!this.obslugiwaneMowienie() || !tekst || ustawienia.glos === false) {
@@ -50,7 +50,8 @@ var Mowa = {
     if (!this.glos) this.wybierzGlos();
     if (this.glos) wypowiedz.voice = this.glos;
     wypowiedz.lang = (this.glos && this.glos.lang) || "en-US";
-    wypowiedz.rate = Number(ustawienia.tempoMowy || 0.95);
+    // Wzor do powtorzenia czytamy wolniej — uczen ma go odtworzyc, nie tylko zrozumiec
+    wypowiedz.rate = Number(ustawienia.tempoMowy || 0.95) * (wolniej ? 0.8 : 1);
 
     var zakonczono = false;
     function koniec() {

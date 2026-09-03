@@ -202,9 +202,111 @@ function przewinNaDol() {
   });
 }
 
+/* --- Powtarzanie za wzorem --- */
+
+function rozpocznijPowtarzanie(fraza) {
+  App.doPowtorzenia = fraza;
+  App.probyPowtorzenia = 0;
+  pokazWzor(fraza);
+  odtworzWzorISluchaj();
+}
+
+function pokazWzor(fraza) {
+  var el = document.createElement("div");
+  el.className = "wzor";
+  el.id = "wzor-biezacy";
+  el.innerHTML =
+    "<b>🔁 Powtórz za mną</b>" +
+    '<div class="fraza">' + esc(fraza) + "</div>" +
+    '<button class="btn drugi maly" data-mow-wolno="' + esc(fraza) + '">🔊 Jeszcze raz wolniej</button>';
+
+  el.querySelector("[data-mow-wolno]").onclick = function () {
+    Mowa.stop();
+    Mowa.powiedz(fraza, null, true);
+  };
+
+  document.getElementById("czat-lista").appendChild(el);
+  przewinNaDol();
+}
+
+function odtworzWzorISluchaj() {
+  Mowa.powiedz(App.doPowtorzenia, function () {
+    if (App.rozmowaTrwa && App.doPowtorzenia) sluchajPowtorki();
+  }, true);
+}
+
+function sluchajPowtorki() {
+  ustawPodpowiedz("🔁 Powiedz: " + App.doPowtorzenia);
+
+  Mowa.sluchaj(
+    function (tekst) {
+      ustawPodpowiedz(tekst ? "„" + tekst + "”" : "🔁 Słucham...");
+    },
+    function (koncowy) {
+      if (!App.rozmowaTrwa || !App.doPowtorzenia) return;
+      ocenPowtorke((koncowy || "").trim());
+    }
+  );
+}
+
+function ocenPowtorke(powiedziane) {
+  var wzor = App.doPowtorzenia;
+  var trafnosc = podobienstwo(powiedziane, wzor);
+  App.probyPowtorzenia++;
+
+  var karta = document.getElementById("wzor-biezacy");
+  ustawPodpowiedz("");
+
+  // Dymka z wypowiedzią NIE dodajemy tutaj — zrobi to wyslijWiadomosc,
+  // inaczej powtórzenie pojawiłoby się w rozmowie dwa razy
+
+  // 70% słów wzoru wystarczy — rozpoznawanie mowy gubi drobiazgi,
+  // a chodzi o wypowiedzenie frazy, nie o dyktando
+  if (trafnosc >= 0.7) {
+    if (karta) karta.classList.add("udane");
+    zakonczPowtarzanie();
+    wyslijWiadomosc(powiedziane, true);
+    return;
+  }
+
+  if (App.probyPowtorzenia < 2) {
+    if (karta) {
+      var wskazowka = karta.querySelector(".uwaga-wzoru");
+      if (!wskazowka) {
+        wskazowka = document.createElement("div");
+        wskazowka.className = "uwaga-wzoru";
+        karta.appendChild(wskazowka);
+      }
+      wskazowka.textContent = "Prawie. Posłuchaj jeszcze raz i powtórz.";
+    }
+    odtworzWzorISluchaj();
+    return;
+  }
+
+  // Po dwóch próbach wracamy do rozmowy. Utknięcie na jednej frazie
+  // zniechęca bardziej, niż pomaga jej opanowanie.
+  if (karta) {
+    var koniec = document.createElement("div");
+    koniec.className = "uwaga-wzoru";
+    koniec.textContent = "Wrócimy do tego później — jedziemy dalej.";
+    karta.appendChild(koniec);
+  }
+  zakonczPowtarzanie();
+  // Gdy nic nie udało się rozpoznać, nie wysyłamy wzoru jako słów ucznia —
+  // w zapisie rozmowy byłoby to nieprawdą. Zamiast tego prosimy o dalszy ciąg.
+  wyslijWiadomosc(powiedziane || "Let's move on, please.", true);
+}
+
+function zakonczPowtarzanie() {
+  App.doPowtorzenia = "";
+  App.probyPowtorzenia = 0;
+  var karta = document.getElementById("wzor-biezacy");
+  if (karta) karta.removeAttribute("id");
+}
+
 /* --- Wysyłka --- */
 
-async function wyslijWiadomosc(tekstZMowy) {
+async function wyslijWiadomosc(tekstZMowy, powtorzenie) {
   var pole = document.getElementById("czat-pole");
   var tekst = (tekstZMowy || pole.value || "").trim();
   if (!tekst || !App.lekcja) return;
@@ -231,6 +333,9 @@ async function wyslijWiadomosc(tekstZMowy) {
       scenariusz: App.lekcja.scenariusz,
       historia: App.historiaCzatu,
       wiadomosc: tekst,
+      // Serwer wie, że to powtórka za wzorem — pochwali i wróci do rozmowy,
+      // zamiast poprawiać powtórzenie i prosić o kolejne
+      powtorzenie: !!powtorzenie,
     });
 
     pisze.remove();
@@ -241,8 +346,14 @@ async function wyslijWiadomosc(tekstZMowy) {
     dodajDymek("ai", odp.odpowiedz);
     if (odp.korekta) dodajKorekte(odp.korekta);
 
-    // Lektor mówi, a po nim mikrofon sam wraca do ucznia
-    mowIPodajGlos(odp.odpowiedz);
+    if (odp.doPowtorzenia) {
+      // Lektor poprosił o powtórzenie — rozmowa czeka, aż uczeń wypowie wzór
+      App.ostatniaKwestia = odp.odpowiedz;
+      Mowa.powiedz(odp.odpowiedz, function () { rozpocznijPowtarzanie(odp.doPowtorzenia); });
+    } else {
+      // Lektor mówi, a po nim mikrofon sam wraca do ucznia
+      mowIPodajGlos(odp.odpowiedz);
+    }
 
     for (var i = 0; i < (odp.noweSlowa || []).length; i++) {
       var s = odp.noweSlowa[i];
@@ -273,6 +384,7 @@ async function zakonczLekcje() {
   }
 
   App.rozmowaTrwa = false;
+  App.doPowtorzenia = "";
   Mowa.stop();
   Mowa.cisza();
   ustawPodpowiedz("");
