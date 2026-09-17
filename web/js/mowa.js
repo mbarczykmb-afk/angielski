@@ -78,6 +78,37 @@ var Mowa = {
   /* --- Mikrofon --- */
 
   /**
+   * Składa zapis wypowiedzi z listy wyników rozpoznawania.
+   *
+   * Lista w zdarzeniu jest KUMULATYWNA — przy każdym zdarzeniu zawiera
+   * wszystkie wyniki od początku nasłuchu, a nie tylko nowe. Dlatego tekst
+   * budujemy zawsze od zera. Doklejanie przyrostów przy pomocy resultIndex
+   * wydaje się oszczędniejsze, ale Chrome potrafi przysłać zdarzenie
+   * wskazujące na wyniki już wcześniej zamknięte — i wtedy te same słowa
+   * dokleją się po raz drugi i trzeci ("I I I was was was...").
+   *
+   * Składanie od zera jest odporne na powtórzone zdarzenia: ten sam wynik
+   * policzony dwa razy daje ten sam tekst.
+   */
+  zlozZapis: function (wyniki) {
+    var gotowe = "";
+    var czastkowe = "";
+
+    for (var i = 0; i < wyniki.length; i++) {
+      var wynik = wyniki[i];
+      if (!wynik || !wynik[0]) continue;
+
+      var fragment = String(wynik[0].transcript || "").trim();
+      if (!fragment) continue;
+
+      if (wynik.isFinal) gotowe += (gotowe ? " " : "") + fragment;
+      else czastkowe += (czastkowe ? " " : "") + fragment;
+    }
+
+    return { gotowe: gotowe, czastkowe: czastkowe };
+  },
+
+  /**
    * Nasłuch jednej wypowiedzi.
    * onTekst(tekst, koncowy) — wołane też dla wyników częściowych, żeby
    * uczeń widział na bieżąco, co zostało rozpoznane.
@@ -129,16 +160,11 @@ var Mowa = {
     };
 
     r.onresult = function (zdarzenie) {
-      var czastkowe = "";
+      var zapis = Mowa.zlozZapis(zdarzenie.results);
 
-      for (var i = zdarzenie.resultIndex; i < zdarzenie.results.length; i++) {
-        var wynik = zdarzenie.results[i];
-        if (wynik.isFinal) finalne += wynik[0].transcript + " ";
-        else czastkowe += wynik[0].transcript;
-      }
-
+      finalne = zapis.gotowe;
       cokolwiekPowiedziano = true;
-      onTekst((finalne + czastkowe).trim(), false);
+      onTekst((zapis.gotowe + " " + zapis.czastkowe).trim(), false);
 
       // Każde kolejne słowo odsuwa moment zakończenia — mów tyle, ile chcesz
       odlozKoniec(pauza);
@@ -166,6 +192,11 @@ var Mowa = {
     this.rozpoznawanie = r;
     try {
       r.start();
+      // Flagę stawiamy od razu, nie dopiero w onstart. Zdarzenie startu przychodzi
+      // z opóźnieniem, a w tej szczelinie drugie wywołanie sluchaj() przeszłoby
+      // przez bramkę na początku funkcji i uruchomiło równoległy nasłuch —
+      // dwa nasłuchy to każde słowo zapisane dwa razy.
+      this.slucha = true;
     } catch (e) {
       this.slucha = false;
       toast("Nie udało się włączyć mikrofonu.", false);

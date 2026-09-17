@@ -1,0 +1,85 @@
+// Testy składania zapisu wypowiedzi z wyników rozpoznawania mowy.
+//
+// Zgłoszenie z użycia: aplikacja duplikowała każde słowo ("I I I was was was").
+// Przyczyną było doklejanie przyrostów od zdarzenie.resultIndex — Chrome potrafi
+// przysłać zdarzenie wskazujące na wyniki już zamknięte, a wtedy te same słowa
+// doklejały się kolejny raz. Te testy pilnują, żeby to nie wróciło.
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
+
+const katalog = dirname(fileURLToPath(import.meta.url));
+const zrodlo = readFileSync(join(katalog, "../js/mowa.js"), "utf8");
+
+// Wyciągamy samą funkcję składania — reszta modułu potrzebuje przeglądarki
+const poczatek = zrodlo.indexOf("  zlozZapis: function");
+const koniec = zrodlo.indexOf("  /**", poczatek + 10);
+const zlozZapis = new Function(
+  "return { " + zrodlo.slice(poczatek, koniec).trim().replace(/,$/, "") + " }.zlozZapis;"
+)();
+
+let bledy = 0;
+function sprawdz(nazwa, wynik, oczekiwane) {
+  const a = JSON.stringify(wynik), b = JSON.stringify(oczekiwane);
+  if (a !== b) { console.log(`✗ ${nazwa}\n   otrzymano:  ${a}\n   oczekiwano: ${b}`); bledy++; }
+  else console.log(`✓ ${nazwa}`);
+}
+
+// Odwzorowanie listy wyników tak, jak przysyła ją przeglądarka
+function wyniki(...pozycje) {
+  const lista = pozycje.map(([tekst, koncowy]) => {
+    const r = [{ transcript: tekst }];
+    r.isFinal = koncowy;
+    return r;
+  });
+  lista.length = pozycje.length;
+  return lista;
+}
+
+// --- Sedno zgłoszenia ---
+
+// Chrome przysyła listę KUMULATYWNĄ. Każde zdarzenie niesie wszystkie wyniki
+// od początku nasłuchu, więc składanie musi dawać ten sam tekst za każdym razem.
+const naraz = wyniki(["I", true], ["was", true], ["tired", true]);
+sprawdz("to samo zdarzenie policzone raz",
+  zlozZapis(naraz), { gotowe: "I was tired", czastkowe: "" });
+sprawdz("to samo zdarzenie policzone drugi raz daje ten sam tekst",
+  zlozZapis(naraz), { gotowe: "I was tired", czastkowe: "" });
+sprawdz("i trzeci raz też",
+  zlozZapis(naraz), { gotowe: "I was tired", czastkowe: "" });
+
+// Przebieg narastający: przeglądarka dokłada kolejne słowa do tej samej listy
+sprawdz("narastanie: pierwsze słowo", zlozZapis(wyniki(["I", true])),
+  { gotowe: "I", czastkowe: "" });
+sprawdz("narastanie: drugie słowo", zlozZapis(wyniki(["I", true], ["was", true])),
+  { gotowe: "I was", czastkowe: "" });
+sprawdz("narastanie: trzecie słowo", zlozZapis(wyniki(["I", true], ["was", true], ["tired", true])),
+  { gotowe: "I was tired", czastkowe: "" });
+
+// --- Wyniki częściowe ---
+
+sprawdz("częściowy oddzielony od zamkniętego",
+  zlozZapis(wyniki(["I was", true], ["very", false])),
+  { gotowe: "I was", czastkowe: "very" });
+
+sprawdz("częściowy zamieniony na zamknięty nie dubluje",
+  zlozZapis(wyniki(["I was", true], ["very tired", true])),
+  { gotowe: "I was very tired", czastkowe: "" });
+
+// --- Przypadki brzegowe ---
+
+sprawdz("pusta lista", zlozZapis(wyniki()), { gotowe: "", czastkowe: "" });
+sprawdz("puste fragmenty pomijane",
+  zlozZapis(wyniki(["", true], ["hello", true], ["   ", true])),
+  { gotowe: "hello", czastkowe: "" });
+sprawdz("spacje wokół fragmentów przycięte",
+  zlozZapis(wyniki(["  I  ", true], ["  was  ", true])),
+  { gotowe: "I was", czastkowe: "" });
+
+// Powtórzone słowo wypowiedziane naprawdę musi przetrwać — nie odsiewamy duplikatów
+sprawdz("prawdziwe powtórzenie zostaje nietknięte",
+  zlozZapis(wyniki(["very", true], ["very", true], ["good", true])),
+  { gotowe: "very very good", czastkowe: "" });
+
+console.log(bledy ? `\n${bledy} błędów` : "\nWszystkie testy przeszły");
+process.exit(bledy ? 1 : 0);
