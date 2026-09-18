@@ -75,12 +75,45 @@ function rysujUstawienia() {
     '<div class="karta"><h3>Konto</h3>' +
     '<button class="btn drugi" id="btn-wyloguj">Wyloguj</button>' +
     '<p class="mini" style="margin-top:10px">Serwer: ' + esc(Api.adres) + "</p>" +
+    // Aplikacja i backend aktualizują się osobno i potrafią się rozjechać.
+    // Wtedy nowy ekran puka do starego serwera i sypie "Nieznana trasa" —
+    // ta linijka pozwala to zobaczyć od razu, zamiast zgadywać z błędu.
+    '<p class="mini" id="wersje-uslugi">Sprawdzam wersje...</p>' +
     '<p class="mini"><a href="#" id="link-zmien-adres2" style="color:var(--przygasly)">Zmień adres serwera</a></p></div>';
 
   podepnijUstawienia();
   wczytajListeKopii();
   wczytajDysk();
   sprawdzDostawcow();
+  pokazWersje();
+}
+
+/**
+ * Wersja aplikacji w telefonie obok wersji backendu.
+ *
+ * Wersję aplikacji bierzemy z nazwy pamięci podręcznej service workera,
+ * a nie ze stałej w kodzie — stała potrafi zostać nieprzepisana i wtedy
+ * kłamie akurat wtedy, gdy jest najbardziej potrzebna.
+ */
+async function pokazWersje() {
+  var el = document.getElementById("wersje-uslugi");
+  if (!el) return;
+
+  var aplikacja = "—";
+  try {
+    var klucze = await caches.keys();
+    var nasze = klucze.filter(function (k) { return k.indexOf("angielski-ai-") === 0; });
+    if (nasze.length) aplikacja = nasze[nasze.length - 1].replace("angielski-ai-", "");
+  } catch (e) {
+    // Bez service workera (np. tryb prywatny) po prostu nie wiemy
+  }
+
+  try {
+    var zdrowie = await Api.wywolaj("/api/health");
+    el.textContent = "Aplikacja: " + aplikacja + " · Serwer: " + (zdrowie.wersja || "nieznana");
+  } catch (e) {
+    el.textContent = "Aplikacja: " + aplikacja + " · Serwer: nie odpowiada";
+  }
 }
 
 // Pytamy Workera, czy ma klucz Gemini — inaczej użytkownik wybrałby model,
