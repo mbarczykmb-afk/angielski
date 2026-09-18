@@ -63,6 +63,17 @@ export function roznicaDni(od, doo) {
   return Math.round((Date.UTC(r2, m2 - 1, d2) - Date.UTC(r1, m1 - 1, d1)) / 86400000);
 }
 
+/**
+ * Passa po zaliczeniu dnia nauki: +1 dzień po dniu, reset po przerwie,
+ * bez podwójnego liczenia, gdy tego samego dnia zrobi się drugą lekcję.
+ */
+export function nowaPassa(ostatniDzien, dzis, streak) {
+  const ostatni = ostatniDzien || "";
+  if (ostatni === dzis) return Number(streak) || 0;
+  if (ostatni && roznicaDni(ostatni, dzis) === 1) return (Number(streak) || 0) + 1;
+  return 1;
+}
+
 export function bezpieczneJson(tekst, domyslne) {
   if (!tekst) return domyslne;
   try {

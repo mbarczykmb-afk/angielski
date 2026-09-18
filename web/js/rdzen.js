@@ -5,6 +5,7 @@
 var App = {
   stan: null,          // pełny stan z serwera
   lekcja: null,        // materiał aktualnie otwartej lekcji
+  matura: null,        // trwające podejście do matury ustnej
   historiaCzatu: [],   // [{role, content}] wysyłane do modelu
   wypowiedzi: [],      // same wypowiedzi ucznia — do podsumowania
   korekty: [],         // korekty zebrane w trakcie rozmowy
@@ -14,7 +15,17 @@ var App = {
   doPowtorzenia: "",   // fraza, którą uczeń ma teraz powtórzyć za lektorem
   probyPowtorzenia: 0, // ile razy próbował — po dwóch wracamy do rozmowy
   widok: "dzis",
+
+  // Co zrobić z wypowiedzią ucznia. Mikrofon jest wspólny dla kursu i matury,
+  // a to pole decyduje, który moduł ją teraz odbiera — dzięki temu warstwa
+  // mowy nie musi wiedzieć nic o modułach.
+  odbierzWypowiedz: function (tekst) { wyslijWiadomosc(tekst); },
 };
+
+// Czy trwa sesja mówiona — lekcja kursu albo egzamin maturalny
+function sesjaTrwa() {
+  return !!(App.lekcja || App.matura);
+}
 
 /* --- Komunikaty --- */
 
@@ -61,10 +72,15 @@ function pokazWidok(nazwa) {
   document.querySelectorAll(".nawigacja button").forEach(function (b) {
     b.classList.toggle("aktywny", b.dataset.widok === nazwa);
   });
-  document.getElementById("naglowek-widoku").textContent = NAZWY_WIDOKOW[nazwa];
+  // Nagłówek mówi, w którym module jesteśmy — inaczej "Dziś" i "Rozmowa"
+  // znaczyłyby co innego w kursie, a co innego na maturze
+  var naglowek = NAZWY_WIDOKOW[nazwa];
+  if (nazwa === "dzis" && modulAktywny() === "matura") naglowek = "Matura ustna";
+  if (nazwa === "rozmowa" && App.matura) naglowek = "Egzamin ustny";
+  document.getElementById("naglowek-widoku").textContent = naglowek;
 
   // Pasek wprowadzania należy wyłącznie do rozmowy w toku
-  var wRozmowie = nazwa === "rozmowa" && !!App.lekcja;
+  var wRozmowie = nazwa === "rozmowa" && sesjaTrwa();
   document.getElementById("czat-wejscie").hidden = !wRozmowie;
 
   // W trakcie rozmowy odznaki ustępują miejsca zakończeniu lekcji —

@@ -1,7 +1,7 @@
 // ============================================================
 // Rdzeń nauki — stan, test poziomujący, plan, lekcja, rozmowa, słówka
 // ============================================================
-import { BladApi, uuid, dzisISO, terazISO, dataPlus, roznicaDni, bezpieczneJson, tekst, liczba } from "./pomoc.js";
+import { BladApi, uuid, dzisISO, terazISO, dataPlus, roznicaDni, nowaPassa, bezpieczneJson, tekst, liczba } from "./pomoc.js";
 import { wywolajAIJson, MODEL_GLOWNY, MODEL_ROZMOWA, DOSTAWCA_GEMINI } from "./ai.js";
 import { zapiszKopie } from "./kopie.js";
 
@@ -442,16 +442,7 @@ export async function zakonczLekcje(env, uzytkownik, dzien, dane) {
     Math.min(40, wypowiedzi.length * 4) + // za aktywność w rozmowie
     Math.round(liczba(podsumowanie.ocena) * 0.5); // za jakość
 
-  // Passa: +1 dzień po dniu, reset po przerwie, bez podwójnego liczenia tego samego dnia
-  let streak = liczba(uzytkownik.streak);
-  const ostatni = uzytkownik.ostatni_dzien || "";
-  if (ostatni === dzis) {
-    // dzisiaj już policzone
-  } else if (ostatni && roznicaDni(ostatni, dzis) === 1) {
-    streak += 1;
-  } else {
-    streak = 1;
-  }
+  const streak = nowaPassa(uzytkownik.ostatni_dzien, dzis, liczba(uzytkownik.streak));
 
   const operacje = [
     env.DB.prepare("UPDATE plan SET status = 'ukonczony', data_ukonczenia = ? WHERE user_id = ? AND dzien = ?").bind(

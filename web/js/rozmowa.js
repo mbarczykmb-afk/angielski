@@ -12,11 +12,16 @@ function otworzLekcje(dzien) {
 
   Api.pobierz("/api/lekcja/" + dzien).then(function (lekcja) {
     App.lekcja = lekcja;
+    App.matura = null;
+    App.odbierzWypowiedz = function (tekst) { wyslijWiadomosc(tekst); };
     App.historiaCzatu = [];
     App.wypowiedzi = [];
     App.korekty = [];
     App.startLekcji = Date.now();
     App.rozmowaTrwa = true;
+
+    var stare = document.getElementById("blok-podsumowania");
+    if (stare) stare.remove();
 
     pokazWidok("rozmowa");
     rysujRozmowe();
@@ -62,6 +67,10 @@ function sluchajUcznia() {
 
   ustawPodpowiedz("🎤 Mów teraz po angielsku...");
 
+  // Czas wypowiedzi mierzymy od włączenia mikrofonu — na maturze służy
+  // do oceny płynności, bo to jedyna rzecz, którą da się tu zmierzyć
+  var poczatek = Date.now();
+
   Mowa.sluchaj(
     function (tekst) {
       ustawPodpowiedz(tekst ? "„" + tekst + "”" : "🎤 Słucham...");
@@ -71,7 +80,7 @@ function sluchajUcznia() {
 
       if (koncowy && koncowy.trim()) {
         ustawPodpowiedz("");
-        wyslijWiadomosc(koncowy.trim());
+        App.odbierzWypowiedz(koncowy.trim(), Math.round((Date.now() - poczatek) / 1000));
       } else {
         ustawPodpowiedz("Nie dosłyszałem — dotknij mikrofonu i powiedz jeszcze raz.");
       }
@@ -89,6 +98,14 @@ function ustawPodpowiedz(tekst) {
 function rysujRozmowe() {
   var brak = document.getElementById("rozmowa-brak");
   var tresc = document.getElementById("rozmowa-tresc");
+
+  // Egzamin maturalny rysuje sobie własną kartę — ma inne reguły niż lekcja
+  if (App.matura) {
+    rysujKarteMatury();
+    return;
+  }
+
+  document.getElementById("btn-zakoncz-lekcje").textContent = "✓ Zakończ lekcję i podsumuj";
 
   if (!App.lekcja) {
     brak.hidden = false;
@@ -481,17 +498,31 @@ function pokazPodsumowanie(wynik) {
 
 /* --- Podpięcie --- */
 
+// Pasek wprowadzania i przycisk zakończenia są wspólne dla kursu i matury,
+// więc kierujemy je tam, gdzie akurat trwa sesja
+function wyslijZPola() {
+  var pole = document.getElementById("czat-pole");
+  var tekst = pole.value.trim();
+  if (!tekst) return;
+  App.odbierzWypowiedz(tekst, 0);
+}
+
+function zakonczSesje() {
+  if (App.matura) zakonczMature();
+  else zakonczLekcje();
+}
+
 function podepnijRozmowe() {
   var pole = document.getElementById("czat-pole");
 
-  document.getElementById("btn-wyslij").onclick = function () { wyslijWiadomosc(); };
-  document.getElementById("btn-zakoncz-lekcje").onclick = zakonczLekcje;
-  document.getElementById("btn-zakoncz-gora").onclick = zakonczLekcje;
+  document.getElementById("btn-wyslij").onclick = wyslijZPola;
+  document.getElementById("btn-zakoncz-lekcje").onclick = zakonczSesje;
+  document.getElementById("btn-zakoncz-gora").onclick = zakonczSesje;
 
   pole.onkeydown = function (e) {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      wyslijWiadomosc();
+      wyslijZPola();
     }
   };
 

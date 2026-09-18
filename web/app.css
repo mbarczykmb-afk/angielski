@@ -412,6 +412,103 @@ label { display: block; font-size: 12px; color: var(--przygasly); margin: 10px 0
 }
 .opcja.wybrana { border-color: var(--zielony); background: rgba(29, 158, 117, .13); }
 
+/* --- Matura ustna --- */
+
+/* Wybór modułu. Nawigacja ma już pięć pozycji, więc tryb nauki przełącza się
+   tutaj, na górze zakładki "Dziś" — jedno dotknięcie, zawsze widoczne. */
+.przelacz-modul {
+  display: flex;
+  gap: 4px;
+  background: var(--tlo3);
+  border-radius: 11px;
+  padding: 4px;
+  margin-bottom: 14px;
+}
+.przelacz-modul button {
+  flex: 1;
+  background: none;
+  border: none;
+  color: var(--przygasly);
+  font-size: 13.5px;
+  font-weight: 600;
+  padding: 9px 6px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.przelacz-modul button.aktywny { background: var(--tlo2); color: var(--tekst); box-shadow: 0 1px 4px rgba(0, 0, 0, .3); }
+
+.matura-gora { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+#matura-czas { font-variant-numeric: tabular-nums; }
+#matura-czas.przekroczony { color: var(--zolty); }
+
+/* Polecenie i materiały są tu WIDOCZNE — na sali zdający też ma zestaw
+   przed oczami, więc zakrywanie ich zmieniałoby zadanie w coś innego. */
+.polecenie {
+  background: var(--tlo3);
+  border-left: 3px solid var(--niebieski);
+  border-radius: 0 8px 8px 0;
+  padding: 10px 12px;
+  margin: 12px 0 8px;
+  font-size: 14.5px;
+  line-height: 1.5;
+}
+.elementy { margin: 6px 0 0 18px; padding: 0; }
+.elementy li { font-size: 14.5px; margin-bottom: 5px; line-height: 1.4; }
+
+.ilustracja {
+  background: var(--tlo3);
+  border: 1px dashed var(--ramka);
+  border-radius: 10px;
+  padding: 12px;
+  margin-top: 10px;
+}
+.ilustracja b { color: var(--niebieski); font-size: 12px; text-transform: uppercase; letter-spacing: .5px; }
+.ilustracja p { font-size: 14.5px; line-height: 1.5; margin-top: 6px; }
+.ilustracja small { display: block; color: var(--przygasly); font-size: 12px; margin-top: 8px; }
+
+.opcja-matury {
+  display: flex;
+  gap: 10px;
+  background: var(--tlo3);
+  border-radius: 10px;
+  padding: 11px 12px;
+  margin-top: 8px;
+}
+.opcja-matury b {
+  flex: 0 0 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--niebieski);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12.5px;
+}
+.opcja-matury span { flex: 1; font-size: 14px; line-height: 1.45; }
+
+/* Punktacja: każde kryterium to wiersz z punktami i paskiem wypełnienia */
+.kryterium {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 10px;
+  font-size: 14px;
+}
+.kryterium span { flex: 1; }
+.kryterium b { flex: 0 0 auto; font-variant-numeric: tabular-nums; }
+.kryterium.razem { border-top: 1px solid var(--ramka); padding-top: 9px; font-weight: 700; }
+.kryterium .szacunek {
+  color: var(--zolty);
+  font-style: normal;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: .4px;
+}
+.pasek.maly { height: 5px; margin: 5px 0 0; }
+.mini.przypis { color: var(--zolty); }
+
 /* --- Wykres --- */
 canvas { width: 100%; height: auto; display: block; }
 

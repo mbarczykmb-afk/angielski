@@ -9,11 +9,24 @@ function rysujDzis() {
     return;
   }
 
+  // Dwa moduły dzielą tę zakładkę: kurs konwersacyjny i przygotowanie do matury.
+  // Nawigacja ma już pięć pozycji, a szósta na telefonie robi się nieczytelna —
+  // dlatego wybór modułu jest przełącznikiem na górze, nie kolejną ikoną.
+  if (modulAktywny() === "matura") {
+    rysujMature();
+    return;
+  }
+
+  rysujDzisKurs();
+}
+
+function rysujDzisKurs() {
+  var widok = document.getElementById("w-dzis");
   var s = App.stan;
   var dzien = s.plan.find(function (p) { return p.dzien === s.biezacyDzien; });
   var ukonczone = s.plan.filter(function (p) { return p.status === "ukonczony"; }).length;
   var doPowtorki = liczbaDoPowtorki();
-  var html = "";
+  var html = przelacznikModulu();
 
   /* --- Karta lekcji dnia --- */
 
@@ -75,6 +88,8 @@ function rysujDzis() {
   widok.innerHTML = html;
 
   /* --- Zdarzenia --- */
+
+  podepnijPrzelacznikModulu(widok);
 
   var start = document.getElementById("btn-start-lekcji");
   if (start) start.onclick = function () { otworzLekcje(s.biezacyDzien); };

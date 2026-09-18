@@ -6,15 +6,33 @@ import { BladApi, uuid, terazISO, bezpieczneJson, tekst, liczba } from "./pomoc.
 const LIMIT_KOPII = 20; // ile migawek trzymamy na użytkownika
 const FORMAT = "angielski-ai-backup";
 
+/**
+ * Zapytanie, które wolno oblać. Tabela "matura" dochodzi migracją 002,
+ * a kopia zapasowa nie może przestać działać tylko dlatego, że ktoś jeszcze
+ * jej nie wgrał — postępy z kursu są ważniejsze niż komplet.
+ */
+async function nieobowiazkowe(zapytanie, domyslne) {
+  try {
+    return await zapytanie;
+  } catch (e) {
+    console.warn("Pomijam w kopii:", e.message);
+    return domyslne;
+  }
+}
+
 // Komplet danych jednego użytkownika w jednym obiekcie
 export async function zbierzDane(env, userId) {
-  const [uzytkownik, assessments, plan, progress, chat, vocab] = await Promise.all([
+  const [uzytkownik, assessments, plan, progress, chat, vocab, matura] = await Promise.all([
     env.DB.prepare("SELECT * FROM users WHERE id = ?").bind(userId).first(),
     env.DB.prepare("SELECT * FROM assessments WHERE user_id = ? ORDER BY data").bind(userId).all(),
     env.DB.prepare("SELECT * FROM plan WHERE user_id = ? ORDER BY dzien").bind(userId).all(),
     env.DB.prepare("SELECT * FROM progress WHERE user_id = ? ORDER BY data").bind(userId).all(),
     env.DB.prepare("SELECT * FROM chat WHERE user_id = ? ORDER BY rowid").bind(userId).all(),
     env.DB.prepare("SELECT * FROM vocab WHERE user_id = ? ORDER BY dodano").bind(userId).all(),
+    nieobowiazkowe(
+      env.DB.prepare("SELECT * FROM matura WHERE user_id = ? ORDER BY rowid").bind(userId).all(),
+      { results: [] }
+    ),
   ]);
 
   if (!uzytkownik) throw new BladApi(404, "Nie znaleziono profilu.");
@@ -32,6 +50,7 @@ export async function zbierzDane(env, userId) {
     progress: progress.results || [],
     chat: chat.results || [],
     vocab: vocab.results || [],
+    matura: matura.results || [],
   };
 }
 
@@ -216,7 +235,50 @@ export async function przywroc(env, uzytkownik, dane) {
     await env.DB.batch(operacje.slice(i, i + 50));
   }
 
-  return { ok: true, wczytano: operacje.length };
+  // Matura osobno i z osłoną: starsze kopie jej nie mają, a tabela dochodzi
+  // migracją 002. Ani jedno, ani drugie nie może wysadzić przywracania kursu.
+  const podejscia = await przywrocMature(env, id, kopia.matura || []);
+
+  return { ok: true, wczytano: operacje.length + podejscia };
+}
+
+async function przywrocMature(env, id, wiersze) {
+  try {
+    const operacje = [env.DB.prepare("DELETE FROM matura WHERE user_id = ?").bind(id)];
+
+    for (const m of wiersze) {
+      if (!m?.id) continue;
+      operacje.push(
+        env.DB.prepare(
+          `INSERT INTO matura (id, user_id, data, tryb, temat, obszar, zestaw, przebieg, punkty, maks, szczegoly, czas_sek, status)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+        ).bind(
+          uuid(),
+          id,
+          tekst(m.data, 30),
+          tekst(m.tryb, 20) || "pelny",
+          tekst(m.temat, 100),
+          tekst(m.obszar, 60),
+          tekst(m.zestaw, 20000) || "{}",
+          tekst(m.przebieg, 60000) || "[]",
+          liczba(m.punkty),
+          liczba(m.maks, 30),
+          tekst(m.szczegoly, 40000),
+          liczba(m.czas_sek),
+          tekst(m.status, 20) || "zakonczony"
+        )
+      );
+    }
+
+    for (let i = 0; i < operacje.length; i += 50) {
+      await env.DB.batch(operacje.slice(i, i + 50));
+    }
+
+    return operacje.length;
+  } catch (e) {
+    console.warn("Pomijam maturę przy przywracaniu:", e.message);
+    return 0;
+  }
 }
 
 export async function przywrocZMigawki(env, uzytkownik, backupId, strefaMin) {

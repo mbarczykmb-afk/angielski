@@ -19,11 +19,19 @@ import {
   wyjasnijSlowko,
 } from "./nauka.js";
 import { listaKopii, utworzKopieRecznie, eksportuj, przywroc, przywrocZMigawki } from "./kopie.js";
+import {
+  pobierzStanMatury,
+  pobierzPodejscie,
+  nowyZestaw,
+  turaMatury,
+  ocenMature,
+  porzucMature,
+} from "./matura.js";
 import { diagnostyka } from "./ai.js";
 
 // Znacznik wersji kodu — widoczny w /api/health.
 // Pozwala sprawdzic golym okiem, ktora wersja naprawde dziala na serwerze.
-const WERSJA_KODU = "2026-09-02-diagnostyka";
+const WERSJA_KODU = "2026-09-18-matura";
 import {
   rozpocznijPolaczenie,
   obsluzPowrot,
@@ -154,6 +162,46 @@ async function trasuj(request, env, ctx) {
   const dopasowanieHistorii = sciezka.match(/^\/api\/czat\/(\d+)$/);
   if (dopasowanieHistorii && metoda === "GET") {
     return json(await historiaCzatu(env, uzytkownik, Number(dopasowanieHistorii[1])), env);
+  }
+
+  // --- Matura ustna ---
+
+  if (sciezka === "/api/matura" && metoda === "GET") {
+    return json(await pobierzStanMatury(env, uzytkownik), env);
+  }
+
+  if (sciezka === "/api/matura/zestaw" && metoda === "POST") {
+    return json(await nowyZestaw(env, uzytkownik, body), env);
+  }
+
+  if (sciezka === "/api/matura/tura" && metoda === "POST") {
+    return json(await turaMatury(env, uzytkownik, body), env);
+  }
+
+  const dopasowanieOceny = sciezka.match(/^\/api\/matura\/([\w-]+)\/ocena$/);
+  if (dopasowanieOceny && metoda === "POST") {
+    const wynik = await ocenMature(env, uzytkownik, dopasowanieOceny[1], body);
+
+    // Kopia na Dysk po odesłaniu wyniku — tak samo jak po lekcji
+    if (uzytkownik.dysk_refresh && ctx) {
+      ctx.waitUntil(
+        wyslijKopie(env, uzytkownik, "po-maturze").catch((e) =>
+          console.error("Kopia na Dysk nieudana:", e.message)
+        )
+      );
+    }
+
+    const swiezy = await env.DB.prepare("SELECT * FROM users WHERE id = ?").bind(uzytkownik.id).first();
+    return json({ ...wynik, stan: await pobierzStan(env, swiezy, strefaMin) }, env);
+  }
+
+  const dopasowaniePodejscia = sciezka.match(/^\/api\/matura\/([\w-]+)$/);
+  if (dopasowaniePodejscia && metoda === "GET") {
+    return json(await pobierzPodejscie(env, uzytkownik, dopasowaniePodejscia[1]), env);
+  }
+
+  if (dopasowaniePodejscia && metoda === "DELETE") {
+    return json(await porzucMature(env, uzytkownik, dopasowaniePodejscia[1]), env);
   }
 
   // --- Słówka ---

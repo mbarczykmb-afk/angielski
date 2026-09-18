@@ -127,6 +127,9 @@ function podepnijUstawienia() {
       tempoMowy: Number(document.getElementById("pole-tempo").value),
       modelRozmowy: document.getElementById("pole-model").value,
       celDzienny: Number(document.getElementById("pole-cel-dzienny").value),
+      // Wybrany moduł nie ma tu przełącznika, ale mieszka w tym samym obiekcie —
+      // bez przepisania zapis ustawień mowy cofałby użytkownika do kursu
+      modul: modulAktywny(),
     };
 
     try {

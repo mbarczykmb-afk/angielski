@@ -8,6 +8,7 @@ function rysujPostep() {
 
   var s = App.stan;
   var lekcje = s.postep.filter(function (p) { return p.typ === "lekcja"; });
+  var matury = s.postep.filter(function (p) { return p.typ === "matura"; });
   var sredniaOcena = lekcje.length
     ? Math.round(lekcje.reduce(function (a, p) { return a + p.wynik; }, 0) / lekcje.length)
     : 0;
@@ -49,6 +50,24 @@ function rysujPostep() {
       '<button class="btn drugi" id="btn-powtorz-test" style="margin-top:14px">Zrób test ponownie</button>' +
       '<p class="mini" style="margin-top:6px">Nowy test ustawi poziom od nowa i ułoży świeży plan 30 dni. Postępy i słówka zostają.</p>' +
       "</div>";
+  }
+
+  /* --- Matura ustna --- */
+
+  if (matury.length) {
+    var najlepsza = Math.max.apply(null, matury.map(function (p) { return p.wynik; }));
+    html += '<div class="karta"><h3>Matura ustna</h3>' +
+      '<div class="statystyki">' +
+      '<div class="statystyka"><b>' + matury.length + "</b><span>podejść</span></div>" +
+      '<div class="statystyka"><b style="color:var(--zielony2)">' + najlepsza + "%</b><span>najlepszy</span></div>" +
+      "</div>" +
+      matury.slice().reverse().slice(0, 10).map(function (p) {
+        return '<div class="pozycja"><div class="tresc"><b>' + esc(p.notatki || "Egzamin próbny") + "</b>" +
+          "<small>" + esc(p.data) + " · " + Math.round(p.czasSek / 60) + " min</small></div>" +
+          '<span class="tag ' + (p.wynik >= 30 ? "mocny" : "slaby") + '">' + p.wynik + "%</span></div>";
+      }).join("") +
+      '<p class="mini" style="margin-top:10px">Szczegóły każdego podejścia są w module ' +
+      "Matura ustna, w zakładce Dziś.</p></div>";
   }
 
   /* --- Historia lekcji --- */
