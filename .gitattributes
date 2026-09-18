@@ -1,0 +1,3 @@
+# Pliki .bat uruchamia cmd.exe w Windowsie i wymaga koncow linii CRLF.
+# Bez tego skrypt potrafi sie wysypac na drobiazgach, ktore trudno zdiagnozowac.
+*.bat text eol=crlf
