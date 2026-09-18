@@ -16,6 +16,7 @@
 // ============================================================
 import { BladApi, uuid, dzisISO, terazISO, dataPlus, bezpieczneJson, tekst, liczba, nowaPassa } from "./pomoc.js";
 import { wywolajAIJson, MODEL_GLOWNY, MODEL_ROZMOWA, DOSTAWCA_GEMINI } from "./ai.js";
+import { znajdzZdjecie } from "./zdjecia.js";
 import { zapiszKopie } from "./kopie.js";
 
 // Zakres tematyczny wymagań egzaminacyjnych — z tego losujemy zestaw
@@ -243,11 +244,16 @@ function opisZadan(tryb) {
     czesci.push(
       '"zadanie2" — opis ilustracji:\n' +
         '  "polecenie": PO POLSKU, standardowa formuła CKE.\n' +
+        '  "hasla": 2-4 słowa PO ANGIELSKU, którymi da się znaleźć w banku zdjęć fotografię ' +
+        'do tego zadania (np. ["family", "dinner", "kitchen"]). Konkretne rzeczowniki i czynności, ' +
+        "bez przymiotników oceniających i bez nazw własnych.\n" +
         '  "ilustracja": PO POLSKU, 4-6 zdań opisujących scenę tak dokładnie, jak wyglądałoby zdjęcie: ' +
-        "kto, gdzie, co robi, co jest w tle, jaki nastrój. To zastępuje zdjęcie, więc musi dać się z tego " +
-        "zbudować pełny opis po angielsku. Nie podawaj angielskich słów.\n" +
-        '  "pytania": 3 pytania PO ANGIELSKU związane z ilustracją — pierwsze o samą scenę, ' +
-        "dwa kolejne o doświadczenia i opinie zdającego."
+        "kto, gdzie, co robi, co jest w tle, jaki nastrój. Używamy tego, gdy nie uda się znaleźć zdjęcia. " +
+        "Nie podawaj angielskich słów.\n" +
+        '  "pytania": 3 pytania PO ANGIELSKU. Zdający będzie oglądał PRAWDZIWE zdjęcie, którego Ty nie ' +
+        "widzisz, więc pytania muszą działać dla każdej fotografii z tego tematu: pierwsze ogólne o samą " +
+        'scenę (np. "How do you think the people in the picture feel?"), dwa kolejne o doświadczenia ' +
+        "i opinie zdającego. Żadnych pytań o szczegóły, których możesz nie trafić."
     );
   }
 
@@ -304,6 +310,12 @@ export async function nowyZestaw(env, uzytkownik, dane) {
   const wymagane = tryb === "pelny" ? ["zadanie1", "zadanie2", "zadanie3"] : [tryb];
   if (!zestaw || wymagane.some((k) => !zestaw[k])) {
     throw new BladApi(502, "Nie udało się ułożyć zestawu. Spróbuj jeszcze raz.");
+  }
+
+  // Prawdziwa fotografia zamiast opisu sceny — na maturze zdający dostaje
+  // zdjęcie. Gdy nie da się żadnego dobrać, zostaje opis i egzamin idzie dalej.
+  if (zestaw.zadanie2) {
+    zestaw.zadanie2.zdjecie = await znajdzZdjecie(env, zestaw.zadanie2.hasla);
   }
 
   const etap = ETAPY[tryb][0];
@@ -371,9 +383,14 @@ function instrukcjaEtapu(zestaw, etap) {
     const z = zestaw.zadanie2 || {};
     return (
       "ETAP: zadanie 2 — opis ilustracji i trzy pytania.\n" +
-      "ILUSTRACJA (zdający ma jej opis przed sobą): " +
-      (z.ilustracja || "") +
-      "\nPYTANIA, które zadajesz po opisie, pojedynczo i w tej kolejności:\n" +
+      (z.zdjecie
+        ? "ZDJĘCIE: zdający ogląda prawdziwą fotografię na temat: " +
+          (z.hasla || []).join(", ") +
+          ". TY JEJ NIE WIDZISZ. Nigdy nie twierdź, co na niej jest, i nie poprawiaj " +
+          "zdającego, gdy opisuje coś innego, niż się spodziewasz — to on patrzy na zdjęcie, nie Ty. " +
+          "Zadawaj wyłącznie pytania z listy poniżej.\n"
+        : "ILUSTRACJA (zdający ma jej opis przed sobą): " + (z.ilustracja || "") + "\n") +
+      "PYTANIA, które zadajesz po opisie, pojedynczo i w tej kolejności:\n" +
       (z.pytania || []).map((p, i) => `${i + 1}. ${p}`).join("\n") +
       "\nNajpierw poczekaj na opis ilustracji. Jeśli opis jest bardzo ubogi, poproś raz " +
       'o rozwinięcie ("Could you tell me more about what you can see?"), a potem przejdź do pytań. ' +
@@ -560,7 +577,13 @@ export async function ocenMature(env, uzytkownik, sesjaId, dane) {
     "(mocno przekręcone słowa zwykle znaczą niewyraźną wymowę), długość wypowiedzi " +
     "i podane niżej tempo mowy. Przy braku przesłanek nie zaniżaj — daj wynik średni " +
     "i powiedz, że to oszacowanie.\n" +
-    "Zapis nie ma interpunkcji. NIE traktuj tego jako błędu — to sposób zapisu, nie mowa zdającego.\n\n" +
+    "Zapis nie ma interpunkcji. NIE traktuj tego jako błędu — to sposób zapisu, nie mowa zdającego.\n" +
+    (zestaw.zadanie2?.zdjecie
+      ? "W zadaniu 2 zdający opisywał prawdziwą fotografię, której TY NIE WIDZISZ. Nie oceniaj więc " +
+        "zgodności opisu ze zdjęciem — oceniaj język i to, czy opis był pełny, uporządkowany " +
+        "i rozwinięty. Zakładaj, że to, co zdający opisał, faktycznie było na zdjęciu.\n"
+      : "") +
+    "\n" +
     "POZA PUNKTAMI podaj to, co naprawdę pomaga się poprawić:\n" +
     '"bledy": 3-8 konkretnych potknięć. Dla każdego "bylo" (cytat ze zdającego), ' +
     '"powinno" (poprawna wersja po angielsku) i "dlaczego" (krótkie wyjaśnienie po polsku — ' +

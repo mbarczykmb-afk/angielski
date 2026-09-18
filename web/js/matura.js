@@ -74,12 +74,28 @@ function rysujMature() {
     if (App.widok === "dzis" && modulAktywny() === "matura") rysujPulpitMatury(dane);
   }).catch(function (e) {
     if (App.widok !== "dzis") return;
+
+    // "Nieznana trasa" znaczy, że serwer nie zna jeszcze tej trasy — czyli
+    // front jest nowy, a Worker stary. To zupełnie inna usterka niż błąd bazy
+    // i inaczej się ją naprawia, więc nie wolno ich mylić w komunikacie.
+    var staryWorker = /nieznana trasa/i.test(e.message || "");
+
     widok.innerHTML = przelacznikModulu() +
-      '<div class="karta"><h3>Nie udało się wczytać modułu</h3>' +
+      '<div class="karta"><h3>' +
+      (staryWorker ? "Serwer działa jeszcze starą wersją" : "Nie udało się wczytać modułu") + "</h3>" +
       '<p class="podpis">' + esc(e.message) + "</p>" +
-      '<p class="mini" style="margin-top:8px">Jeśli to pierwsze uruchomienie matury, ' +
-      "serwer potrzebuje jeszcze migracji bazy <code>002-matura.sql</code>.</p></div>";
+      (staryWorker
+        ? '<p class="mini" style="margin-top:8px">Aplikacja na telefonie jest już nowa, ale backend ' +
+          "(Worker na Cloudflare) nie został jeszcze wdrożony. Moduł ruszy sam, gdy backend się zaktualizuje.</p>" +
+          '<button class="btn drugi" id="btn-sprawdz-worker" style="margin-top:10px">Sprawdź jeszcze raz</button>'
+        : '<p class="mini" style="margin-top:8px">Spróbuj ponownie za chwilę. ' +
+          "Jeśli błąd wraca, zajrzyj do Więcej → Konto i sprawdź adres serwera.</p>") +
+      "</div>";
+
     podepnijPrzelacznikModulu(widok);
+
+    var ponow = document.getElementById("btn-sprawdz-worker");
+    if (ponow) ponow.onclick = rysujMature;
   });
 }
 
@@ -269,6 +285,34 @@ var ETYKIETY_ETAPOW = {
   koniec: "Koniec egzaminu",
 };
 
+/**
+ * Ilustracja do zadania 2.
+ *
+ * Najlepiej prawdziwa fotografia — na maturze zdający dostaje zdjęcie i to ono
+ * decyduje, co da się powiedzieć. Gdy serwer żadnego nie znalazł, zostaje opis
+ * sceny słowami: gorzej, ale wciąż da się na tym ćwiczyć.
+ */
+function kartaIlustracji(zadanie) {
+  var f = zadanie.zdjecie;
+
+  if (f && f.url) {
+    var podpis = [f.autor, f.zrodlo, f.licencja].filter(Boolean).join(" · ");
+    return '<div class="ilustracja"><b>🖼 Ilustracja</b>' +
+      '<img src="' + esc(f.url) + '" alt="Zdjęcie do opisania" loading="lazy" referrerpolicy="no-referrer">' +
+      (podpis ? '<small class="zrodlo">' + esc(podpis) + "</small>" : "") +
+      "<small>Opisz to zdjęcie po angielsku: kto, gdzie, co robi, co widać w tle.</small>" +
+      // Zdjęcie może się nie wczytać w słabym zasięgu — opis słowny zostaje pod ręką
+      (zadanie.ilustracja
+        ? "<details><summary>Nie widzę zdjęcia</summary><p>" + esc(zadanie.ilustracja) + "</p></details>"
+        : "") +
+      "</div>";
+  }
+
+  return '<div class="ilustracja"><b>🖼 Ilustracja</b><p>' + esc(zadanie.ilustracja || "") + "</p>" +
+    "<small>Nie udało się dobrać zdjęcia, więc scena jest opisana słowami. " +
+    "Opisz ją po angielsku tak, jakbyś ją widział.</small></div>";
+}
+
 function rysujKarteMatury() {
   var m = App.matura;
   var karta = document.getElementById("rozmowa-material");
@@ -299,10 +343,7 @@ function rysujKarteMatury() {
   }
 
   if (m.etap === "z2" && z.zadanie2) {
-    html += '<p class="polecenie">' + esc(z.zadanie2.polecenie || "") + "</p>" +
-      '<div class="ilustracja"><b>🖼 Ilustracja</b><p>' + esc(z.zadanie2.ilustracja || "") + "</p>" +
-      '<small>Na prawdziwym egzaminie jest tu zdjęcie. Opisz tę scenę po angielsku tak, ' +
-      "jakbyś ją widział.</small></div>";
+    html += '<p class="polecenie">' + esc(z.zadanie2.polecenie || "") + "</p>" + kartaIlustracji(z.zadanie2);
   }
 
   if (m.etap === "z3" && z.zadanie3) {

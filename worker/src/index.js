@@ -31,7 +31,7 @@ import { diagnostyka } from "./ai.js";
 
 // Znacznik wersji kodu — widoczny w /api/health.
 // Pozwala sprawdzic golym okiem, ktora wersja naprawde dziala na serwerze.
-const WERSJA_KODU = "2026-09-18-matura";
+const WERSJA_KODU = "2026-09-18-matura-zdjecia";
 import {
   rozpocznijPolaczenie,
   obsluzPowrot,
@@ -70,6 +70,8 @@ async function trasuj(request, env, ctx) {
         klucz: !!env.ANTHROPIC_API_KEY,
         kodRejestracjiWymagany: !!env.KOD_REJESTRACJI,
         gemini: !!env.GEMINI_API_KEY,
+        // Bez klucza Pexels zdjęcia do matury lecą z Wikimedia Commons
+        zdjeciaPexels: !!env.PEXELS_API_KEY,
         dyskSkonfigurowany: !!(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET),
       },
       env

@@ -10,7 +10,7 @@
     "baza:utworz": "wrangler d1 create angielski-ai",
     "baza:migruj": "wrangler d1 execute angielski-ai --remote --file=./schema.sql",
     "baza:migruj-lokalnie": "wrangler d1 execute angielski-ai --local --file=./schema.sql",
-    "test": "node test/logika.test.mjs && node test/ponowienie.test.mjs && node test/matura.test.mjs && node ../web/test/powtarzanie.test.mjs && node ../web/test/zapis-mowy.test.mjs && node ../web/test/matura-ui.test.mjs",
+    "test": "node test/logika.test.mjs && node test/ponowienie.test.mjs && node test/matura.test.mjs && node test/zdjecia.test.mjs && node ../web/test/powtarzanie.test.mjs && node ../web/test/zapis-mowy.test.mjs && node ../web/test/matura-ui.test.mjs",
     "baza:migruj-mature": "wrangler d1 execute angielski-ai --remote --file=./migracje/002-matura.sql",
     "tail": "wrangler tail"
   },

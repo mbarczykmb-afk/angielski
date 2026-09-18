@@ -29,3 +29,9 @@ GEMINI_MODEL = "gemini-3.7-flash"
 #   npx wrangler secret put KOD_REJESTRACJI     — hasło do zakładania nowych profili (opcjonalne, ale zalecane)
 #   npx wrangler secret put GOOGLE_CLIENT_SECRET — sekret OAuth z Google Cloud Console (opcjonalne)
 #   npx wrangler secret put GEMINI_API_KEY      — klucz z aistudio.google.com (opcjonalne)
+#   npx wrangler secret put PEXELS_API_KEY      — darmowy klucz z pexels.com/api (opcjonalne)
+#
+# PEXELS_API_KEY dotyczy zdjęć do zadania 2 na maturze ustnej. Bez niego zdjęcia
+# lecą z Wikimedia Commons, które nie wymaga żadnego klucza — działa od razu,
+# ale trafia w temat wyraźnie gorzej. Sekrety da się też dodać w panelu
+# Cloudflare: Workers & Pages → angielski-ai → Settings → Variables and Secrets.
