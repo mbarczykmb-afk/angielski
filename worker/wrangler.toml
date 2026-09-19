@@ -11,9 +11,15 @@ database_name = "angielski-ai"
 database_id = "4a74fd4b-d4e8-4695-a7da-925b07600f1d"
 
 [vars]
-# Adres, z którego wolno wołać API. Po włączeniu GitHub Pages wpisz tu swój adres,
-# np. "https://mbarczykmb-afk.github.io" — dopóki jest "*", API przyjmuje wszystkich.
-DOZWOLONY_ORIGIN = "*"
+# Adres, z którego przeglądarka może wołać API.
+#
+# Uwaga na wagę tego ustawienia: token sesji leży w localStorage, a nie w ciasteczku,
+# więc obca strona i tak nie mogłaby go użyć. To jest porządek, nie zamek — prawdziwą
+# ochroną są token sesji i KOD_REJESTRACJI.
+#
+# Gdyby po zmianie aplikacja przestała się łączyć, wpisz tu z powrotem "*"
+# i wdróż ponownie — to cofa całą zmianę.
+DOZWOLONY_ORIGIN = "https://mbarczykmb-afk.github.io"
 
 # OAuth do kopii na Dysku Google (opcjonalne — bez tego działa reszta aplikacji).
 # Client ID jest jawny z natury, więc może zostać tutaj. Sekret idzie przez wrangler secret.

@@ -3,7 +3,16 @@
 // Trasy pod /api/*, dane w D1, klucz modelu w sekrecie Workera.
 // ============================================================
 import { BladApi, json, naglowkiCors, liczba, tekst } from "./pomoc.js";
-import { listaProfili, zarejestruj, zaloguj, wyloguj, wymagajUzytkownika, zmienPin } from "./auth.js";
+import {
+  listaProfili,
+  zarejestruj,
+  zaloguj,
+  wyloguj,
+  wymagajUzytkownika,
+  zmienPin,
+  zmienNazwe,
+  rowneStalyCzas,
+} from "./auth.js";
 import {
   pobierzStan,
   zapiszUstawienia,
@@ -31,7 +40,7 @@ import { diagnostyka } from "./ai.js";
 
 // Znacznik wersji kodu — widoczny w /api/health.
 // Pozwala sprawdzic golym okiem, ktora wersja naprawde dziala na serwerze.
-const WERSJA_KODU = "2026-09-18-matura-zdjecia";
+const WERSJA_KODU = "2026-09-19-matura-profile";
 import {
   rozpocznijPolaczenie,
   obsluzPowrot,
@@ -84,10 +93,19 @@ async function trasuj(request, env, ctx) {
     return obsluzPowrot(env, request);
   }
 
-  // Diagnostyka połączenia z modelem. Bez sesji, bo służy właśnie sytuacjom,
-  // w których aplikacja nie działa. Klucz nie jest ujawniany — tylko jego
-  // kształt (długość, początek, obecność białych znaków).
+  // Diagnostyka połączenia z modelem. Celowo bez sesji, bo służy sytuacjom,
+  // w których nie da się zalogować — ale KAŻDE wejście tutaj wykonuje płatne
+  // zapytanie do modelu. Na publicznym adresie bez zabezpieczenia byłaby to
+  // otwarta furtka do podbijania rachunku, dlatego wymaga kodu rejestracji.
+  // Klucz API nie jest ujawniany — tylko jego kształt (długość, początek,
+  // obecność białych znaków).
   if (sciezka === "/api/diagnostyka" && metoda === "GET") {
+    if (!env.KOD_REJESTRACJI) {
+      throw new BladApi(403, "Diagnostyka wymaga ustawionego sekretu KOD_REJESTRACJI.");
+    }
+    if (!rowneStalyCzas(tekst(url.searchParams.get("kod"), 200), env.KOD_REJESTRACJI)) {
+      throw new BladApi(403, "Nieprawidłowy kod. Dodaj ?kod=... z kodem rejestracji.");
+    }
     return json(await diagnostyka(env), env);
   }
 
@@ -113,6 +131,10 @@ async function trasuj(request, env, ctx) {
 
   if (sciezka === "/api/auth/pin" && metoda === "POST") {
     return json(await zmienPin(env, uzytkownik, body), env);
+  }
+
+  if (sciezka === "/api/auth/nazwa" && metoda === "POST") {
+    return json(await zmienNazwe(env, uzytkownik, body), env);
   }
 
   if (sciezka === "/api/stan" && metoda === "GET") {

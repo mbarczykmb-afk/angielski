@@ -17,6 +17,12 @@ function rysujUstawienia() {
     '<div class="karta"><h3>Profil</h3>' +
     '<h2 style="font-size:19px">' + esc(u.nazwa) + "</h2>" +
     '<p class="podpis">' + (u.poziom || "brak oceny") + " · " + u.xp + " XP · 🔥 " + u.streak + " dni</p>" +
+    // Zmiana imienia rusza tylko etykietę profilu. Postępy, plan, słówka
+    // i rozmowy wiszą na jego identyfikatorze, więc nic z nich nie przepada.
+    '<label for="pole-nazwa">Imię na profilu</label>' +
+    '<input id="pole-nazwa" type="text" maxlength="30" autocomplete="off" value="' + esc(u.nazwa) + '">' +
+    '<button class="btn drugi" id="btn-zmien-nazwe">Zapisz imię</button>' +
+    '<p class="mini">Zmiana samej nazwy. Postępy, słówka i historia zostają nietknięte.</p>' +
     '<label for="pole-cel-dzienny">Cel dzienny</label>' +
     '<select id="pole-cel-dzienny">' +
     [10, 15, 20, 30].map(function (m) {
@@ -282,6 +288,29 @@ function podepnijUstawienia() {
     } finally {
       pole.value = "";
       spinner(false);
+    }
+  };
+
+  /* --- Imię profilu --- */
+
+  document.getElementById("btn-zmien-nazwe").onclick = async function () {
+    var pole = document.getElementById("pole-nazwa");
+    var nowa = pole.value.trim();
+
+    if (nowa === App.stan.user.nazwa) {
+      toast("To samo imię — nic nie zmieniam.");
+      return;
+    }
+
+    try {
+      var wynik = await Api.wyslij("/api/auth/nazwa", { nazwa: nowa });
+      await odswiezStan();
+      odswiezOdznaki();
+      rysujUstawienia();
+      toast("Profil nazywa się teraz " + wynik.nazwa + " ✓");
+    } catch (e) {
+      pole.value = App.stan.user.nazwa; // nieudana zmiana nie zostawia obcego imienia w polu
+      toast(e.message, false);
     }
   };
 

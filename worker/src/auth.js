@@ -35,7 +35,7 @@ export async function zahaszujPin(pin) {
 }
 
 // Porównanie w stałym czasie — nie zdradzamy, ile znaków PIN-u się zgadza
-function rowneStalyCzas(a, b) {
+export function rowneStalyCzas(a, b) {
   if (a.length !== b.length) return false;
   let roznica = 0;
   for (let i = 0; i < a.length; i++) roznica |= a.charCodeAt(i) ^ b.charCodeAt(i);
@@ -103,9 +103,41 @@ export async function listaProfili(env) {
   }));
 }
 
-export async function zarejestruj(env, dane) {
-  const nazwa = tekst(dane.nazwa, 30).trim();
+/**
+ * Sprawdza i porządkuje imię profilu.
+ * Wydzielone, bo używa tego i rejestracja, i zmiana nazwy — a reguła
+ * "dwa znaki i bez duplikatów" musi w obu miejscach znaczyć to samo.
+ */
+export function normalizujNazwe(wartosc) {
+  // Spacje w srodku scalamy: "Piotr  K" i "Piotr K" to dla czlowieka to samo imie,
+  // a jako dwa rozne profile robily by tylko zamieszanie przy wyborze
+  const nazwa = tekst(wartosc, 30).replace(/\s+/g, " ").trim();
   if (nazwa.length < 2) throw new BladApi(400, "Imię musi mieć co najmniej 2 znaki.");
+  return { nazwa, klucz: nazwa.toLowerCase() };
+}
+
+/**
+ * Zmiana imienia profilu. Rusza WYŁĄCZNIE dwie kolumny w wierszu użytkownika —
+ * postępy, plan, słówka, rozmowy i podejścia do matury wiszą na jego id,
+ * którego nie dotykamy. Dlatego przemianowanie nie może zgubić danych.
+ */
+export async function zmienNazwe(env, uzytkownik, dane) {
+  const { nazwa, klucz } = normalizujNazwe(dane.nazwa);
+
+  const zajete = await env.DB.prepare("SELECT id FROM users WHERE nazwa_klucz = ? AND id != ?")
+    .bind(klucz, uzytkownik.id)
+    .first();
+  if (zajete) throw new BladApi(409, "Profil o takim imieniu już istnieje.");
+
+  await env.DB.prepare("UPDATE users SET nazwa = ?, nazwa_klucz = ? WHERE id = ?")
+    .bind(nazwa, klucz, uzytkownik.id)
+    .run();
+
+  return { ok: true, nazwa };
+}
+
+export async function zarejestruj(env, dane) {
+  const { nazwa, klucz } = normalizujNazwe(dane.nazwa);
 
   const pin = tekst(dane.pin, 12).trim();
   if (pin && !/^\d{4,8}$/.test(pin)) throw new BladApi(400, "PIN musi mieć od 4 do 8 cyfr.");
@@ -115,7 +147,6 @@ export async function zarejestruj(env, dane) {
     throw new BladApi(403, "Nieprawidłowy kod rejestracji.");
   }
 
-  const klucz = nazwa.toLowerCase();
   const istnieje = await env.DB.prepare("SELECT id FROM users WHERE nazwa_klucz = ?").bind(klucz).first();
   if (istnieje) throw new BladApi(409, "Profil o takim imieniu już istnieje.");
 
