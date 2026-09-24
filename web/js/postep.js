@@ -16,6 +16,8 @@ function rysujPostep() {
   var ukonczone = s.plan.filter(function (p) { return p.status === "ukonczony"; }).length;
 
   var html =
+    '<div class="karta ranking" id="karta-rankingu"><h3>Ranking domowy · 7 dni</h3>' +
+    '<p class="mini">Wczytuję...</p></div>' +
     '<div class="karta"><div class="statystyki">' +
     '<div class="statystyka"><b>' + ukonczone + "</b><span>lekcji</span></div>" +
     '<div class="statystyka"><b>' + minuty + "</b><span>minut</span></div>" +
@@ -37,7 +39,7 @@ function rysujPostep() {
   if (s.ocena) {
     html += '<div class="karta"><h3>Ocena poziomu</h3>' +
       '<h2 style="font-size:22px">' + esc(s.ocena.poziom) + " · " + s.ocena.punkty + "/100</h2>" +
-      '<p class="mini">z dnia ' + esc(s.ocena.data) + "</p>" +
+      '<p class="mini">' + esc(dataLudzka(s.ocena.data, s.dzis)) + "</p>" +
       (s.ocena.komentarz ? '<p style="margin-top:10px">' + esc(s.ocena.komentarz) + "</p>" : "") +
       (s.ocena.mocne.length
         ? '<h3 style="margin-top:12px">Mocne strony</h3><div class="tagi">' +
@@ -63,7 +65,7 @@ function rysujPostep() {
       "</div>" +
       matury.slice().reverse().slice(0, 10).map(function (p) {
         return '<div class="pozycja"><div class="tresc"><b>' + esc(p.notatki || "Egzamin próbny") + "</b>" +
-          "<small>" + esc(p.data) + " · " + Math.round(p.czasSek / 60) + " min</small></div>" +
+          "<small>" + esc(dataLudzka(p.data, s.dzis)) + " · " + Math.round(p.czasSek / 60) + " min</small></div>" +
           '<span class="tag ' + (p.wynik >= 30 ? "mocny" : "slaby") + '">' + p.wynik + "%</span></div>";
       }).join("") +
       '<p class="mini" style="margin-top:10px">Szczegóły każdego podejścia są w module ' +
@@ -78,12 +80,13 @@ function rysujPostep() {
         var dzien = s.plan.find(function (x) { return x.dzien === p.dzien; });
         return '<div class="pozycja"><div class="tresc"><b>Dzień ' + p.dzien +
           (dzien ? " · " + esc(dzien.temat) : "") + "</b>" +
-          "<small>" + esc(p.data) + " · " + p.wynik + "/100 · " + Math.round(p.czasSek / 60) + " min</small></div>" +
+          "<small>" + esc(dataLudzka(p.data, s.dzis)) + " · " + p.wynik + "/100 · " + Math.round(p.czasSek / 60) + " min</small></div>" +
           '<span class="odznaka xp">+' + p.xp + "</span></div>";
       }).join("") + "</div>";
   }
 
   widok.innerHTML = html;
+  wczytajRanking();
 
   if (lekcje.length >= 2) rysujWykresXp(lekcje);
 
@@ -99,6 +102,55 @@ function rysujPostep() {
   }
 }
 
+/* --- Ranking domowy ---
+
+   Pomysł z lig Duolingo, przycięty do domu: kilka profili rywalizuje
+   o XP z ostatnich 7 dni. Tydzień, a nie suma od początku — inaczej ten,
+   kto zaczął wcześniej, prowadziłby na zawsze i nikomu nie chciałoby się gonić. */
+
+var KOLORY_AWATAROW = ["#1d9e75", "#3b82f6", "#a855f7", "#eab308", "#ef4444", "#14b8a6"];
+
+function kolorAwatara(nazwa) {
+  var suma = 0;
+  for (var i = 0; i < nazwa.length; i++) suma += nazwa.charCodeAt(i);
+  return KOLORY_AWATAROW[suma % KOLORY_AWATAROW.length];
+}
+
+function awatar(nazwa) {
+  return '<span class="awatar" style="background:' + kolorAwatara(String(nazwa || "?")) + '">' +
+    esc(String(nazwa || "?").charAt(0).toUpperCase()) + "</span>";
+}
+
+async function wczytajRanking() {
+  var karta = document.getElementById("karta-rankingu");
+  if (!karta) return;
+
+  try {
+    var dane = await Api.pobierz("/api/ranking");
+    var lista = dane.ranking || [];
+    if (!document.getElementById("karta-rankingu")) return;
+
+    // Przy jednym profilu ranking nie ma sensu — zamiast niego zachęta
+    if (lista.length < 2) {
+      karta.innerHTML = "<h3>Ranking domowy</h3>" +
+        '<p class="podpis">Załóż profil dla kogoś z domu — będziecie się ścigać o XP co tydzień.</p>';
+      return;
+    }
+
+    karta.innerHTML = "<h3>Ranking domowy · 7 dni</h3>" +
+      lista.map(function (u, i) {
+        return '<div class="pozycja' + (u.ja ? " ja" : "") + '">' +
+          '<span class="miejsce">' + (i === 0 && u.tydzien > 0 ? ik("puchar") : i + 1) + "</span>" +
+          awatar(u.nazwa) +
+          '<div class="tresc"><b>' + esc(u.nazwa) + (u.ja ? " (Ty)" : "") + "</b>" +
+          "<small>" + ik("plomien") + " " + u.streak + " " + odmianaDni(u.streak) + " z rzędu</small></div>" +
+          '<span class="punkty">' + u.tydzien + " XP</span></div>";
+      }).join("");
+  } catch (e) {
+    karta.innerHTML = "<h3>Ranking domowy</h3>" + '<p class="mini">Nie udało się wczytać rankingu.</p>';
+  }
+}
+
 /* --- Kalendarz passy: 5 tygodni wstecz --- */
 
 function rysujKalendarz(s) {
@@ -108,7 +160,12 @@ function rysujKalendarz(s) {
   var dzisiaj = new Date();
   var komorki = [];
 
-  for (var i = 34; i >= 0; i--) {
+  // Siatka zaczyna się w poniedziałek, żeby kolumny były dniami tygodnia.
+  // Bez tego ten sam dzień wędrował między kolumnami i kalendarz nic nie mówił.
+  var dzienTygodnia = (dzisiaj.getDay() + 6) % 7; // 0 = poniedziałek
+  var ileDni = 28 + dzienTygodnia;
+
+  for (var i = ileDni; i >= 0; i--) {
     var d = new Date(dzisiaj);
     d.setDate(d.getDate() - i);
     var iso = d.getFullYear() + "-" +
@@ -124,7 +181,10 @@ function rysujKalendarz(s) {
     komorki.push('<div title="' + iso + ": " + xp + ' XP" style="aspect-ratio:1;border-radius:4px;background:' + kolor + '"></div>');
   }
 
-  return '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px">' + komorki.join("") + "</div>" +
+  return '<div class="dni-tygodnia">' + ["Pn", "Wt", "Śr", "Cz", "Pt", "So", "Nd"].map(function (d) {
+      return "<span>" + d + "</span>";
+    }).join("") + "</div>" +
+    '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px">' + komorki.join("") + "</div>" +
     '<p class="mini" style="margin-top:8px">Każdy kwadrat to jeden dzień. Im jaśniejszy, tym więcej XP.</p>';
 }
 

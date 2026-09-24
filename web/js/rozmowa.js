@@ -19,6 +19,8 @@ function otworzLekcje(dzien) {
     App.korekty = [];
     App.startLekcji = Date.now();
     App.rozmowaTrwa = true;
+    App.celeZrobione = [];
+    App.pomoc = null;
 
     var stare = document.getElementById("blok-podsumowania");
     if (stare) stare.remove();
@@ -70,6 +72,7 @@ function sluchajUcznia() {
   // Czas wypowiedzi mierzymy od włączenia mikrofonu — na maturze służy
   // do oceny płynności, bo to jedyna rzecz, którą da się tu zmierzyć
   var poczatek = Date.now();
+  haptyka();
 
   Mowa.sluchaj(
     function (tekst) {
@@ -77,6 +80,7 @@ function sluchajUcznia() {
     },
     function (koncowy) {
       if (!App.rozmowaTrwa) return;
+      haptyka(8);
 
       if (koncowy && koncowy.trim()) {
         ustawPodpowiedz("");
@@ -119,28 +123,33 @@ function rysujRozmowe() {
   document.getElementById("czat-wejscie").hidden = App.widok !== "rozmowa";
 
   var l = App.lekcja;
+  Awatar.pokaz("lektor");
+  document.getElementById("btn-pomoc").hidden = false;
+  document.getElementById("btn-tlumacz").hidden = false;
 
   // Materiał jest zwinięty. Czytanie to dodatek, nie punkt wyjścia.
   document.getElementById("rozmowa-material").innerHTML =
-    "<h3>Day " + l.dzien + "</h3>" +
-    '<h2 style="font-size:17px">' + esc(l.temat) + "</h2>" +
-    (l.zadanieUcznia
-      ? '<p style="margin-top:6px"><b>Your task:</b> ' + esc(l.zadanieUcznia) + "</p>"
-      : "") +
-    (l.wskazowka ? '<p class="podpis" style="margin-top:6px">💡 ' + esc(l.wskazowka) + "</p>" : "") +
+    "<h3>" + esc(l.temat) + "</h3>" +
+    // Trzy cele odhaczane w trakcie rozmowy, jak zadania w roleplayu Speak:
+    // widać postęp i wiadomo, kiedy rozmowę można uczciwie zakończyć.
+    // Starsze lekcje zapisane przed tą zmianą mają tylko jedno zdanie zadania.
+    ((l.cele || []).length
+      ? "<b>Your goals</b>" + '<ul class="cele" id="lista-celow">' + listaCelow(l.cele) + "</ul>"
+      : (l.zadanieUcznia ? "<p><b>Your task:</b> " + esc(l.zadanieUcznia) + "</p>" : "")) +
+    (l.wskazowka ? '<p class="podpis" style="margin-top:8px">' + ik("cel") + " " + esc(l.wskazowka) + "</p>" : "") +
 
     "<details style='margin-top:10px'><summary>Words for today (" + (l.slownictwo || []).length + ")</summary>" +
     (l.slownictwo || []).map(function (s) {
       return '<div class="pozycja"><div class="tresc"><b>' + esc(s.en) + "</b>" +
         "<small>" + esc(s.pl) + (s.przyklad ? " · " + esc(s.przyklad) : "") + "</small></div>" +
-        '<button class="btn maly drugi" data-mow="' + esc(s.przyklad || s.en) + '">🔊</button></div>';
+        '<button class="btn-cichy" data-mow="' + esc(s.przyklad || s.en) + '" aria-label="Posłuchaj">' + ik("glosnik") + "</button></div>";
     }).join("") + "</details>" +
 
     ((l.struktury || []).length
       ? "<details><summary>Phrases to use</summary>" +
         (l.struktury || []).map(function (s) {
           return '<div class="pozycja"><div class="tresc"><b>' + esc(s) + "</b></div>" +
-            '<button class="btn maly drugi" data-mow="' + esc(s) + '">🔊</button></div>';
+            '<button class="btn-cichy" data-mow="' + esc(s) + '" aria-label="Posłuchaj">' + ik("glosnik") + "</button></div>";
         }).join("") + "</details>"
       : "") +
 
@@ -148,7 +157,7 @@ function rysujRozmowe() {
       ? "<details><summary>Stuck? Try these</summary>" +
         (l.pytaniaPomocnicze || []).map(function (p) {
           return '<div class="pozycja"><div class="tresc">' + esc(p) + "</div>" +
-            '<button class="btn maly drugi" data-mow="' + esc(p) + '">🔊</button></div>';
+            '<button class="btn-cichy" data-mow="' + esc(p) + '" aria-label="Posłuchaj">' + ik("glosnik") + "</button></div>";
         }).join("") + "</details>"
       : "");
 
@@ -167,10 +176,11 @@ function dodajDymek(kto, tekst) {
   if (kto === "ai") {
     var zakryty = trybSluchania();
 
+    el.dataset.tekst = tekst;
     el.innerHTML =
       '<span class="tekst-ai"' + (zakryty ? ' hidden' : '') + ">" + esc(tekst) + "</span>" +
-      (zakryty ? '<span class="zakryte">👂 Słuchaj — dotknij, żeby zobaczyć tekst</span>' : "") +
-      '<button class="glosnik" title="Powtórz">🔊</button>';
+      (zakryty ? '<span class="zakryte">' + fala() + "Dotknij, żeby zobaczyć tekst</span>" : "") +
+      '<button class="glosnik" aria-label="Posłuchaj jeszcze raz">' + ik("glosnik") + "</button>";
 
     el.querySelector(".glosnik").onclick = function (zdarzenie) {
       zdarzenie.stopPropagation();
@@ -199,9 +209,9 @@ function dodajKorekte(korekta) {
 
   var el = document.createElement("div");
   el.className = "korekta";
-  el.innerHTML = "<b>✎ Drobna poprawka</b>" +
+  el.innerHTML = "<b>" + ik("olowek") + "Drobna poprawka</b>" +
     (korekta.bylo ? '<div class="bylo">' + esc(korekta.bylo) + "</div>" : "") +
-    '<div class="powinno">' + esc(korekta.powinno) + ' <button class="glosnik" data-mow="' + esc(korekta.powinno) + '">🔊</button></div>' +
+    '<div class="powinno">' + esc(korekta.powinno) + ' <button class="glosnik" data-mow="' + esc(korekta.powinno) + '" aria-label="Posłuchaj">' + ik("glosnik") + "</button></div>" +
     (korekta.dlaczego ? '<div class="czemu">' + esc(korekta.dlaczego) + "</div>" : "");
 
   el.querySelectorAll("[data-mow]").forEach(function (b) {
@@ -233,9 +243,9 @@ function pokazWzor(fraza) {
   el.className = "wzor";
   el.id = "wzor-biezacy";
   el.innerHTML =
-    "<b>🔁 Powtórz za mną</b>" +
+    "<b>" + ik("powtorz") + "Powtórz za mną</b>" +
     '<div class="fraza">' + esc(fraza) + "</div>" +
-    '<button class="btn drugi maly" data-mow-wolno="' + esc(fraza) + '">🔊 Jeszcze raz wolniej</button>';
+    '<button class="btn drugi maly" data-mow-wolno="' + esc(fraza) + '">' + ik("glosnik") + "Jeszcze raz wolniej</button>";
 
   el.querySelector("[data-mow-wolno]").onclick = function () {
     Mowa.stop();
@@ -281,6 +291,7 @@ function ocenPowtorke(powiedziane) {
   // a chodzi o wypowiedzenie frazy, nie o dyktando
   if (trafnosc >= 0.7) {
     if (karta) karta.classList.add("udane");
+    Awatar.ustawEmocje("radosc", 4000);
     zakonczPowtarzanie();
     wyslijWiadomosc(powiedziane, true);
     return;
@@ -342,6 +353,7 @@ async function wyslijWiadomosc(tekstZMowy, powtorzenie) {
   przewinNaDol();
 
   document.getElementById("btn-wyslij").disabled = true;
+  Awatar.ustawStan("mysli");
 
   try {
     var odp = await Api.wyslij("/api/czat", {
@@ -353,9 +365,17 @@ async function wyslijWiadomosc(tekstZMowy, powtorzenie) {
       // Serwer wie, że to powtórka za wzorem — pochwali i wróci do rozmowy,
       // zamiast poprawiać powtórzenie i prosić o kolejne
       powtorzenie: !!powtorzenie,
+      cele: App.lekcja.cele || [],
+      celeZrobione: App.celeZrobione || [],
     });
 
     pisze.remove();
+    App.pomoc = null; // nowa kwestia lektora — stara podpowiedź jest już nieaktualna
+    schowajPodpowiedzi();
+    // Mina lektora: emocja od modelu, a bez niej troska przy poprawce i spokój poza tym
+    Awatar.ustawStan("czeka");
+    Awatar.ustawEmocje(odp.emocja || (odp.korekta ? "troska" : "neutralna"));
+    odswiezCele(odp.celeZrobione);
 
     App.historiaCzatu.push({ role: "user", content: tekst });
     App.historiaCzatu.push({ role: "assistant", content: odp.odpowiedz });
@@ -383,6 +403,7 @@ async function wyslijWiadomosc(tekstZMowy, powtorzenie) {
     }
   } catch (e) {
     pisze.remove();
+    Awatar.ustawStan("czeka");
     toast(e.message, false);
     pole.value = tekst; // wypowiedź nie przepada
   } finally {
@@ -431,11 +452,11 @@ async function zakonczLekcje() {
 
 function pokazPodsumowanie(wynik) {
   var p = wynik.podsumowanie || {};
+  Awatar.schowaj();
 
   document.getElementById("czat-lista").innerHTML = "";
   document.getElementById("czat-wejscie").hidden = true;
   document.getElementById("btn-zakoncz-gora").hidden = true;
-  document.getElementById("odznaki").hidden = false;
   document.getElementById("rozmowa-tresc").hidden = true;
   document.getElementById("rozmowa-brak").hidden = true;
 
@@ -444,7 +465,7 @@ function pokazPodsumowanie(wynik) {
   blok.className = "karta akcent";
   blok.id = "blok-podsumowania";
   blok.innerHTML =
-    '<div class="srodek" style="font-size:40px">🎉</div>' +
+    '<div class="srodek" style="color:var(--zolty)">' + ik("puchar", "duza") + "</div>" +
     '<h2 class="srodek" style="font-size:20px">+' + wynik.xp + " XP</h2>" +
     '<p class="podpis srodek" style="margin-bottom:12px">Ocena rozmowy: ' + (p.ocena || 0) + " / 100</p>" +
     (p.komentarz ? "<p>" + esc(p.komentarz) + "</p>" : "") +
@@ -456,11 +477,11 @@ function pokazPodsumowanie(wynik) {
           return '<div class="blad">' +
             (b.bylo ? '<div class="bylo">' + esc(b.bylo) + "</div>" : "") +
             '<div class="powinno">' + esc(b.powinno || "") +
-            ' <button class="glosnik" data-mow="' + esc(b.powinno || "") + '">🔊</button></div>' +
+            ' <button class="glosnik" data-mow="' + esc(b.powinno || "") + '" aria-label="Posłuchaj">' + ik("glosnik") + "</button></div>" +
             (b.dlaczego ? '<div class="czemu">' + esc(b.dlaczego) + "</div>" : "") +
             "</div>";
         }).join("")
-      : '<p class="podpis" style="margin-top:14px">✓ Bez istotnych błędów w tej rozmowie.</p>') +
+      : '<p class="podpis" style="margin-top:14px">' + ik("ok") + " Bez istotnych błędów w tej rozmowie.</p>") +
 
     ((p.mocne || []).length
       ? '<h3 style="margin-top:14px">Poszło dobrze</h3><div class="tagi">' +
@@ -474,7 +495,7 @@ function pokazPodsumowanie(wynik) {
       ? '<h3 style="margin-top:14px">Dodane do powtórek</h3>' +
         p.nowaSlowka.map(function (s) {
           return '<div class="pozycja"><div class="tresc"><b>' + esc(s.en) + "</b><small>" + esc(s.pl) + "</small></div>" +
-            '<button class="btn maly drugi" data-mow="' + esc(s.en) + '">🔊</button></div>';
+            '<button class="btn-cichy" data-mow="' + esc(s.en) + '" aria-label="Posłuchaj">' + ik("glosnik") + "</button></div>";
         }).join("")
       : "") +
     '<button class="btn" id="btn-wroc-dzis" style="margin-top:14px">Gotowe</button>';
@@ -494,6 +515,136 @@ function pokazPodsumowanie(wynik) {
   };
 
   window.scrollTo(0, 0);
+}
+
+/* --- Cele lekcji --- */
+
+// Mała fala dźwiękowa zamiast ikony ucha — mówi "tu jest nagranie", nie "przeczytaj"
+function fala() {
+  return '<span class="fala">' +
+    [6, 12, 16, 9, 13, 7].map(function (h) { return '<i style="height:' + h + 'px"></i>'; }).join("") +
+    "</span>";
+}
+
+function listaCelow(cele) {
+  var zrobione = App.celeZrobione || [];
+  return cele.map(function (c, i) {
+    return '<li data-cel="' + i + '"' + (zrobione.indexOf(i) > -1 ? ' class="zrobiony"' : "") + ">" +
+      '<span class="znak">' + ik("ok") + '</span><span class="opis">' + esc(c) + "</span></li>";
+  }).join("");
+}
+
+function odswiezCele(nowe) {
+  if (!Array.isArray(nowe) || !App.lekcja || !(App.lekcja.cele || []).length) return;
+
+  var przed = App.celeZrobione || [];
+  var swieze = nowe.filter(function (n) { return przed.indexOf(n) < 0; });
+  App.celeZrobione = nowe.slice();
+
+  document.querySelectorAll("#lista-celow li").forEach(function (li) {
+    li.classList.toggle("zrobiony", nowe.indexOf(Number(li.dataset.cel)) > -1);
+  });
+
+  if (!swieze.length) return;
+  haptyka([15, 60, 15]);
+  Awatar.ustawEmocje("radosc", 5000);
+
+  if (nowe.length >= App.lekcja.cele.length) {
+    toast("Wszystkie cele zrobione! Możesz zakończyć albo gadać dalej.");
+  } else {
+    toast("Cel zaliczony: " + App.lekcja.cele[swieze[0]]);
+  }
+}
+
+/* --- Pomoc w rozmowie: tłumaczenie i propozycje odpowiedzi --- */
+
+async function pobierzPomoc() {
+  var kwestia = App.ostatniaKwestia;
+  if (!kwestia) {
+    toast("Lektor jeszcze nic nie powiedział.", false);
+    return null;
+  }
+
+  // Jedna odpowiedź serwera obsługuje oba przyciski — nie płacimy dwa razy
+  if (App.pomoc && App.pomoc.dla === kwestia) return App.pomoc.dane;
+
+  ustawPodpowiedz("Szukam podpowiedzi...");
+  try {
+    var dane = await Api.wyslij("/api/czat/pomoc", {
+      kwestia: kwestia,
+      temat: App.lekcja && App.lekcja.temat,
+      scenariusz: App.lekcja && App.lekcja.scenariusz,
+    });
+    App.pomoc = { dla: kwestia, dane: dane };
+    return dane;
+  } catch (e) {
+    toast(e.message, false);
+    return null;
+  } finally {
+    ustawPodpowiedz("");
+  }
+}
+
+function ostatniDymekLektora() {
+  var dymki = document.querySelectorAll("#czat-lista .dymek.ai:not(.pisze)");
+  return dymki.length ? dymki[dymki.length - 1] : null;
+}
+
+async function pokazTlumaczenie() {
+  Mowa.stop();
+  var dane = await pobierzPomoc();
+  if (!dane || !dane.tlumaczenie) return;
+
+  var dymek = ostatniDymekLektora();
+  if (!dymek) return;
+
+  // Tłumaczenie bez oryginału byłoby dziwne — odsłaniamy oba
+  var tekst = dymek.querySelector(".tekst-ai");
+  if (tekst) tekst.hidden = false;
+  var zakryte = dymek.querySelector(".zakryte");
+  if (zakryte) zakryte.remove();
+
+  if (!dymek.querySelector(".tlumaczenie-pl")) {
+    var pl = document.createElement("span");
+    pl.className = "tlumaczenie-pl";
+    pl.textContent = dane.tlumaczenie;
+    (tekst || dymek).appendChild(pl);
+  }
+  przewinNaDol();
+}
+
+async function pokazPropozycje() {
+  Mowa.stop();
+  var dane = await pobierzPomoc();
+  if (!dane || !(dane.propozycje || []).length) return;
+
+  schowajPodpowiedzi();
+
+  var el = document.createElement("div");
+  el.className = "podpowiedzi";
+  el.id = "blok-podpowiedzi";
+  el.innerHTML = "<b>" + ik("iskry") + "Możesz powiedzieć na przykład</b>" +
+    dane.propozycje.map(function (p) {
+      return '<button class="propozycja" data-mow="' + esc(p.en) + '"><span>' + esc(p.en) +
+        "<small>" + esc(p.pl) + "</small></span>" + ik("glosnik") + "</button>";
+    }).join("") +
+    '<p class="mini" style="margin-top:8px">Posłuchaj i powiedz po swojemu — przepisywanie nie uczy mówienia.</p>';
+
+  el.querySelectorAll("[data-mow]").forEach(function (b) {
+    b.onclick = function () {
+      Mowa.stop();
+      Mowa.powiedz(b.dataset.mow, null, true);
+    };
+  });
+
+  document.getElementById("czat-lista").appendChild(el);
+  ustawPodpowiedz("Dotknij mikrofonu, gdy będziesz gotów.");
+  przewinNaDol();
+}
+
+function schowajPodpowiedzi() {
+  var stary = document.getElementById("blok-podpowiedzi");
+  if (stary) stary.remove();
 }
 
 /* --- Podpięcie --- */
@@ -533,6 +684,8 @@ function podepnijRozmowe() {
 
   // Mikrofon: dotknięcie w trakcie słuchania kończy wypowiedź,
   // dotknięcie w ciszy — zaczyna ją od nowa
+  // Podpowiedzi zostają na ekranie w trakcie mówienia — po to są.
+  // Znikają dopiero, gdy lektor odpowie i zrobią się nieaktualne.
   document.getElementById("btn-mikrofon").onclick = function () {
     if (Mowa.slucha) {
       Mowa.stop();
@@ -560,4 +713,9 @@ function podepnijRozmowe() {
       mowIPodajGlos(App.ostatniaKwestia);
     };
   }
+
+  // Utknąłem: propozycje odpowiedzi i tłumaczenie ostatniej kwestii.
+  // Oba z jednego zapytania, które zostaje w pamięci do następnej kwestii lektora.
+  document.getElementById("btn-pomoc").onclick = pokazPropozycje;
+  document.getElementById("btn-tlumacz").onclick = pokazTlumaczenie;
 }

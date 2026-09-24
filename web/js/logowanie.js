@@ -53,9 +53,10 @@ function rysujProfile(profile) {
 
   lista.innerHTML = profile.map(function (p) {
     return '<div class="pozycja" data-id="' + esc(p.id) + '" style="cursor:pointer">' +
+      awatar(p.nazwa) +
       '<div class="tresc"><b>' + esc(p.nazwa) + '</b>' +
-      '<small>' + (p.poziom ? esc(p.poziom) + " · " : "") + p.xp + " XP · 🔥 " + p.streak + "</small></div>" +
-      '<span class="znacznik">' + (p.maPin ? "🔒" : "›") + "</span></div>";
+      '<small>' + (p.poziom ? esc(p.poziom) + " · " : "") + p.xp + " XP · " + ik("plomien") + " " + p.streak + "</small></div>" +
+      '<span class="znacznik">' + ik(p.maPin ? "klodka" : "dalej") + "</span></div>";
   }).join("");
 
   lista.querySelectorAll(".pozycja").forEach(function (el) {

@@ -587,3 +587,336 @@ hr { border: none; border-top: 1px solid var(--ramka); margin: 12px 0; }
   display: none;
 }
 .offline.widoczny { display: block; }
+
+/* ============================================================
+   WERSJA 2 INTERFEJSU
+   Ikony SVG zamiast emoji, tryb skupienia w rozmowie, ekran główny
+   z celem dnia, przełączniki zamiast systemowych pól wyboru.
+   Reguły są na końcu pliku celowo — nadpisują starsze bez ich ruszania.
+   ============================================================ */
+
+:root {
+  --akcent-grad: linear-gradient(135deg, #1d9e75 0%, #24c48f 100%);
+  --cien: 0 6px 24px rgba(0, 0, 0, .35);
+}
+
+/* --- Ikony --- */
+.ik { width: 1.15em; height: 1.15em; display: inline-block; vertical-align: -.2em; flex: 0 0 auto; }
+.btn .ik { width: 18px; height: 18px; }
+.odznaka .ik { width: 13px; height: 13px; vertical-align: -2px; margin-right: 3px; }
+
+/* --- Nagłówek --- */
+.gora { min-height: 56px; }
+.gora h1 { font-size: 19px; letter-spacing: -.3px; }
+.btn-wstecz {
+  width: 36px; height: 36px; margin-left: -6px;
+  border: none; border-radius: 50%;
+  background: transparent; color: var(--tekst);
+  display: flex; align-items: center; justify-content: center; cursor: pointer;
+}
+.btn-wstecz .ik { width: 24px; height: 24px; }
+.btn-wstecz:active { background: var(--tlo3); }
+.btn-koniec { display: inline-flex; align-items: center; gap: 6px; }
+.btn-koniec .ik { width: 16px; height: 16px; }
+
+/* --- Dolna nawigacja: cztery zakładki, aktywna w pigułce --- */
+.nawigacja button { font-size: 11px; padding: 7px 2px 9px; gap: 4px; position: relative; }
+.nawigacja button .ikona {
+  display: flex; align-items: center; justify-content: center;
+  width: 56px; height: 30px; border-radius: 999px;
+  transition: background .2s;
+}
+.nawigacja button .ikona .ik { width: 22px; height: 22px; }
+.nawigacja button.aktywny .ikona { background: rgba(36, 196, 143, .16); }
+.nawigacja button .kropka { top: 6px; left: calc(50% + 10px); margin: 0; }
+
+/* --- Tryb skupienia: rozmowa bez dolnego menu --- */
+body.skupienie .nawigacja { display: none; }
+body.skupienie #czat-wejscie { bottom: 0; padding-bottom: calc(12px + env(safe-area-inset-bottom)); }
+body.skupienie #w-rozmowa { padding-bottom: calc(150px + env(safe-area-inset-bottom)); }
+
+/* --- Pasek mikrofonu: pięć przycisków, mikrofon w środku --- */
+.wejscie-rzad { gap: 12px; }
+.btn-ikona { width: 44px; height: 44px; color: var(--tekst); }
+.btn-ikona .ik { width: 20px; height: 20px; }
+.btn-ikona .pl { font-size: 12.5px; font-weight: 800; letter-spacing: .3px; }
+.btn-ikona.aktywny { background: rgba(36, 196, 143, .16); border-color: var(--zielony); color: var(--zielony2); }
+.mikrofon.duzy { width: 70px; height: 70px; flex: 0 0 70px; background: var(--akcent-grad); }
+.mikrofon.duzy .ik { width: 30px; height: 30px; }
+.wyslij { display: flex; align-items: center; justify-content: center; }
+.wyslij .ik { width: 20px; height: 20px; }
+
+/* --- Przełączniki zamiast systemowych pól wyboru --- */
+.przelacznik input[type="checkbox"] {
+  -webkit-appearance: none; appearance: none;
+  width: 46px; height: 28px; flex: 0 0 46px;
+  border-radius: 999px; background: var(--ramka);
+  position: relative; cursor: pointer; transition: background .2s;
+  border: none; padding: 0;
+}
+.przelacznik input[type="checkbox"]::after {
+  content: ""; position: absolute; top: 3px; left: 3px;
+  width: 22px; height: 22px; border-radius: 50%;
+  background: #fff; transition: transform .2s;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, .4);
+}
+.przelacznik input[type="checkbox"]:checked { background: var(--zielony); }
+.przelacznik input[type="checkbox"]:checked::after { transform: translateX(18px); }
+input[type="range"] { accent-color: var(--zielony2); padding: 0; background: transparent; border: none; height: 28px; }
+
+/* --- Ekran logowania --- */
+.logo-blok { text-align: center; padding: 34px 10px 22px; }
+.logo-blok .logo { width: 84px; height: 84px; border-radius: 22px; box-shadow: var(--cien); }
+.logo-blok h1 { font-size: 24px; margin-top: 14px; letter-spacing: -.4px; }
+.logo-blok .podpis { margin-top: 4px; }
+#ekran-logowanie .widok { padding-top: calc(10px + env(safe-area-inset-top)); }
+
+.awatar {
+  width: 42px; height: 42px; flex: 0 0 42px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 800; font-size: 17px; color: #fff;
+}
+.pozycja .znacznik .ik { width: 18px; height: 18px; color: var(--przygasly); }
+
+/* --- Ekran główny --- */
+.powitanie { display: flex; align-items: center; gap: 14px; margin: 2px 0 14px; }
+.powitanie .tekst { flex: 1; min-width: 0; }
+.powitanie h2 { font-size: 21px; letter-spacing: -.3px; }
+.powitanie p { color: var(--przygasly); font-size: 13.5px; }
+
+/* Pierścień celu dnia — ile minut z celu już za nami */
+.pierscien { position: relative; width: 62px; height: 62px; flex: 0 0 62px; }
+.pierscien svg { width: 62px; height: 62px; transform: rotate(-90deg); }
+.pierscien .tlo-kola { stroke: var(--tlo3); }
+.pierscien .wypelnienie { stroke: var(--zielony2); transition: stroke-dashoffset .6s; }
+.pierscien .wartosc {
+  position: absolute; inset: 0; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; line-height: 1.05;
+}
+.pierscien .wartosc b { font-size: 15px; }
+.pierscien .wartosc small { font-size: 9.5px; color: var(--przygasly); }
+
+.karta.bohater {
+  background: linear-gradient(160deg, rgba(29, 158, 117, .22), rgba(22, 27, 34, 1) 60%);
+  border-color: rgba(36, 196, 143, .45);
+  padding: 18px;
+}
+.karta.bohater .etykieta { color: var(--zielony2); font-size: 12px; font-weight: 800; letter-spacing: .6px; text-transform: uppercase; }
+.karta.bohater h2 { font-size: 21px; margin: 6px 0 4px; letter-spacing: -.3px; }
+.karta.bohater .btn { margin-top: 14px; padding: 15px 18px; font-size: 16px; background: var(--akcent-grad); box-shadow: 0 6px 18px rgba(29, 158, 117, .3); }
+
+.karta.wznow { border-color: var(--niebieski); background: rgba(59, 130, 246, .08); display: flex; align-items: center; gap: 12px; }
+.karta.wznow .tresc { flex: 1; min-width: 0; }
+.karta.wznow .btn { width: auto; flex: 0 0 auto; }
+
+/* Oś planu: 30 kropek zamiast 30 wierszy listy */
+.os-planu { display: grid; grid-template-columns: repeat(15, 1fr); gap: 5px; margin: 12px 0 4px; }
+.os-planu span { aspect-ratio: 1; border-radius: 50%; background: var(--tlo3); }
+.os-planu span.zrobiony { background: var(--zielony); }
+.os-planu span.biezacy { background: var(--niebieski); box-shadow: 0 0 0 3px rgba(59, 130, 246, .3); }
+
+/* Kafelki skrótów: powtórki i matura obok siebie */
+.kafelki { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+.kafelek {
+  background: var(--tlo2); border: 1px solid var(--ramka); border-radius: 14px;
+  padding: 13px; cursor: pointer; text-align: left; color: var(--tekst); font-family: inherit;
+}
+.kafelek:active { transform: scale(.98); }
+.kafelek .ik { width: 22px; height: 22px; color: var(--zielony2); }
+.kafelek b { display: block; font-size: 20px; margin-top: 8px; }
+.kafelek span { font-size: 12px; color: var(--przygasly); }
+.kafelek.uwaga .ik { color: var(--zolty); }
+
+/* --- Rozmowa --- */
+.dymek.ai { display: flex; align-items: flex-start; gap: 8px; }
+.dymek.ai .tekst-ai, .dymek.ai .zakryte { flex: 1; }
+.dymek.ai .glosnik { margin: -2px -4px 0 0; padding: 3px; color: var(--przygasly); display: flex; }
+.dymek.ai .glosnik .ik { width: 18px; height: 18px; }
+.dymek.ai .zakryte { display: flex; align-items: center; gap: 8px; font-style: normal; }
+.dymek.ai .zakryte .ik { width: 18px; height: 18px; color: var(--zielony2); }
+.fala { display: inline-flex; align-items: center; gap: 2px; height: 16px; }
+.fala i { width: 3px; border-radius: 2px; background: var(--zielony2); opacity: .7; }
+.dymek .tlumaczenie-pl { display: block; margin-top: 6px; padding-top: 6px; border-top: 1px dashed var(--ramka); color: var(--przygasly); font-size: 13.5px; font-style: italic; }
+
+/* Cele lekcji odhaczane na żywo — jak zadania w roleplayu Speak */
+.cele { list-style: none; margin-top: 10px; }
+.cele li { display: flex; gap: 10px; align-items: flex-start; padding: 6px 0; font-size: 14px; }
+.cele li .znak {
+  width: 22px; height: 22px; flex: 0 0 22px; border-radius: 50%;
+  border: 2px solid var(--ramka); display: flex; align-items: center; justify-content: center;
+  transition: all .3s;
+}
+.cele li .znak .ik { width: 13px; height: 13px; opacity: 0; }
+.cele li.zrobiony .znak { background: var(--zielony); border-color: var(--zielony); color: #fff; }
+.cele li.zrobiony .znak .ik { opacity: 1; }
+.cele li.zrobiony .opis { color: var(--przygasly); text-decoration: line-through; }
+
+/* Podpowiedzi "co mogę powiedzieć" */
+.podpowiedzi {
+  align-self: stretch; background: rgba(168, 85, 247, .08);
+  border: 1px solid rgba(168, 85, 247, .45); border-radius: 14px; padding: 11px 13px;
+}
+.podpowiedzi > b { color: var(--fiolet); font-size: 12px; text-transform: uppercase; letter-spacing: .5px; display: flex; align-items: center; gap: 6px; }
+.podpowiedzi .propozycja {
+  display: flex; align-items: center; gap: 8px; width: 100%;
+  background: var(--tlo2); border: 1px solid var(--ramka); border-radius: 10px;
+  padding: 9px 11px; margin-top: 8px; color: var(--tekst);
+  font-family: inherit; font-size: 14.5px; text-align: left; cursor: pointer;
+}
+.podpowiedzi .propozycja span { flex: 1; }
+.podpowiedzi .propozycja small { display: block; color: var(--przygasly); font-size: 12px; }
+.podpowiedzi .propozycja .ik { color: var(--przygasly); }
+
+.korekta b, .wzor > b { display: flex; align-items: center; gap: 6px; }
+.wzor > b { justify-content: center; }
+.korekta .glosnik, .blad .glosnik { background: none; border: none; color: var(--zielony2); cursor: pointer; vertical-align: -3px; padding: 0 2px; }
+
+/* --- Wybór w pigułkach zamiast rozwijanej listy --- */
+.pigulki { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.pigulka {
+  background: var(--tlo3); border: 2px solid var(--ramka); border-radius: 12px;
+  padding: 10px 11px; color: var(--tekst); font-family: inherit; text-align: left; cursor: pointer;
+}
+.pigulka b { display: block; font-size: 14px; }
+.pigulka small { display: block; color: var(--przygasly); font-size: 11.5px; line-height: 1.3; margin-top: 2px; }
+.pigulka.wybrana { border-color: var(--zielony); background: rgba(29, 158, 117, .13); }
+
+/* Odznaka etapu i minutnik nie mogą wypychać się poza kartę */
+.matura-gora { flex-wrap: wrap; }
+.matura-gora .odznaka { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+.matura-gora .odznaka.poziom { flex: 1 1 auto; min-width: 0; }
+
+/* --- Fiszki --- */
+.fiszka { min-height: 230px; border-radius: 20px; box-shadow: var(--cien); }
+.fiszka .slowo { font-size: 30px; letter-spacing: -.4px; }
+.oceny { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
+.oceny .btn { margin: 0; padding: 16px 10px; }
+.btn.czerwony { background: rgba(239, 68, 68, .14); border: 1px solid rgba(239, 68, 68, .5); color: #fca5a5; }
+
+.btn-cichy {
+  background: none; border: none; color: var(--przygasly); cursor: pointer;
+  padding: 8px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+}
+.btn-cichy .ik { width: 19px; height: 19px; }
+.btn-cichy.usun:active { color: var(--czerwony); }
+
+/* --- Ranking rodziny --- */
+.ranking .miejsce { width: 26px; text-align: center; font-weight: 800; color: var(--przygasly); }
+.ranking .pozycja.ja { background: rgba(36, 196, 143, .07); margin: 0 -8px; padding-left: 8px; padding-right: 8px; border-radius: 10px; }
+.ranking .punkty { font-weight: 800; color: var(--zielony2); font-variant-numeric: tabular-nums; }
+
+/* Etykiety dni tygodnia nad kalendarzem */
+.dni-tygodnia { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-bottom: 4px; }
+.dni-tygodnia span { text-align: center; font-size: 10.5px; color: var(--przygasly); font-weight: 700; }
+
+/* Drobne dopasowania ikon w starszych elementach */
+.dzien-planu .numer .ik { width: 14px; height: 14px; }
+.ik.duza { width: 46px; height: 46px; }
+.karta.bohater .etykieta .ik { width: 14px; height: 14px; vertical-align: -2px; }
+.podpis .ik, .mini .ik, small .ik { width: 13px; height: 13px; vertical-align: -2px; }
+.pozycja .tresc small .ik { color: var(--zolty); }
+.ranking .miejsce .ik { width: 18px; height: 18px; color: var(--zolty); }
+.karta h2 .ik { color: var(--zielony2); }
+#lista-celow + * { margin-top: 4px; }
+
+/* ============================================================
+   Gadająca głowa
+   Miny przełączają klasy (emocja-*, stan-*), a przejścia robi CSS,
+   więc zmiana nastroju jest płynna, a JS nie liczy żadnej animacji
+   poza ruchem ust.
+   ============================================================ */
+
+.awatar-panel {
+  position: sticky;
+  top: calc(56px + env(safe-area-inset-top));
+  z-index: 40;
+  display: flex; align-items: center; gap: 12px;
+  margin: -14px -14px 12px;
+  padding: 10px 14px;
+  background: rgba(13, 17, 23, .95);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--ramka);
+}
+.awatar-twarz { width: 78px; height: 78px; flex: 0 0 78px; }
+.awatar-opis b { display: block; font-size: 15px; }
+.awatar-opis span { font-size: 13px; color: var(--przygasly); display: inline-flex; align-items: center; gap: 6px; }
+.awatar-opis span::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--przygasly); }
+.awatar-panel[data-stan="mowi"] .awatar-opis span::before { background: var(--zielony2); }
+.awatar-panel[data-stan="slucha"] .awatar-opis span { color: #fca5a5; }
+.awatar-panel[data-stan="slucha"] .awatar-opis span::before { background: var(--czerwony); animation: miga 1s infinite; }
+.awatar-panel[data-stan="mysli"] .awatar-opis span::before { background: var(--zolty); animation: miga .8s infinite; }
+@keyframes miga { 50% { opacity: .3; } }
+
+.twarz { width: 100%; height: 100%; display: block; overflow: visible; --usta: 0; }
+.twarz * { transform-box: fill-box; transform-origin: center; }
+.tlo-twarzy { fill: rgba(36, 196, 143, .15); }
+.twarz.egzaminator .tlo-twarzy { fill: rgba(59, 130, 246, .15); }
+
+.twarz .glowa { transition: transform .5s ease; transform-origin: 50% 100%; }
+.twarz .brew { transition: transform .35s ease; }
+.twarz .oko { transition: transform .3s ease; }
+.twarz .zrenica { transition: transform .35s ease; }
+.twarz .rumieniec { opacity: 0; transition: opacity .4s; }
+
+/* Powieki: górna opada przy mrugnięciu, dolna unosi się przy uśmiechu */
+.twarz .powieka { transform: scaleY(0); transform-origin: 50% 0; transition: transform .07s; }
+.twarz.mrug .powieka { transform: scaleY(1); }
+.twarz .dolna-powieka { transform: scaleY(0); transform-origin: 50% 100%; transition: transform .3s; }
+
+/* Usta: widoczna tylko mina bieżącej emocji */
+.twarz .u { opacity: 0; transition: opacity .25s; }
+.twarz.emocja-neutralna .u-neutralna,
+.twarz.emocja-radosc .u-radosc,
+.twarz.emocja-zaciekawienie .u-zaciekawienie,
+.twarz.emocja-zdziwienie .u-zdziwienie,
+.twarz.emocja-troska .u-troska,
+.twarz.emocja-rozbawienie .u-rozbawienie { opacity: 1; }
+
+/* W trakcie mówienia miny ustępują ruchomym ustom, sterowanym zmienną --usta */
+.twarz .u-mowa { opacity: 0; transform: scaleY(calc(.15 + var(--usta) * .95)); transform-origin: 50% 30%; transition: opacity .15s; }
+.twarz.stan-mowi .u { opacity: 0; }
+.twarz.stan-mowi .u-mowa { opacity: 1; }
+.twarz.stan-mowi .glowa { animation: kiwanie-mowa 1.4s ease-in-out infinite; }
+
+/* Myślenie: wzrok w bok i w górę, jedna brew w górę, usta w kreskę */
+.twarz.stan-mysli .zrenica { transform: translate(2px, -2px); }
+.twarz.stan-mysli .brew-l { transform: translateY(-3px) rotate(-8deg); }
+.twarz.stan-mysli .u { opacity: 0; }
+.twarz.stan-mysli .u-mysli { opacity: 1; }
+.twarz.stan-mysli .glowa { transform: rotate(3deg); }
+
+/* Słuchanie: skupiony wzrok i delikatne potakiwanie */
+.twarz.stan-slucha .glowa { animation: potakiwanie 2.4s ease-in-out infinite; }
+.twarz.stan-slucha .oko { transform: scale(1.06); }
+
+@keyframes potakiwanie {
+  0%, 100% { transform: rotate(0) translateY(0); }
+  30% { transform: rotate(-1.5deg) translateY(1.2px); }
+  60% { transform: rotate(.5deg) translateY(0); }
+}
+@keyframes kiwanie-mowa {
+  0%, 100% { transform: rotate(0); }
+  50% { transform: rotate(-1.2deg) translateY(-.6px); }
+}
+
+/* Emocje */
+.twarz.emocja-radosc .brew, .twarz.emocja-rozbawienie .brew { transform: translateY(-2px); }
+.twarz.emocja-radosc .dolna-powieka { transform: scaleY(.95); }
+.twarz.emocja-rozbawienie .dolna-powieka { transform: scaleY(1.05); }
+.twarz.emocja-radosc .rumieniec, .twarz.emocja-rozbawienie .rumieniec { opacity: .5; }
+
+.twarz.emocja-zaciekawienie .brew-p { transform: translateY(-3.5px) rotate(-7deg); }
+.twarz.emocja-zaciekawienie .glowa { transform: rotate(-4deg); }
+
+.twarz.emocja-zdziwienie .brew { transform: translateY(-4.5px); }
+.twarz.emocja-zdziwienie .oko { transform: scale(1.14); }
+
+.twarz.emocja-troska .brew-l { transform: translateY(-1px) rotate(-12deg); }
+.twarz.emocja-troska .brew-p { transform: translateY(-1px) rotate(12deg); }
+
+@media (prefers-reduced-motion: reduce) {
+  .twarz .glowa { animation: none !important; }
+}
+
+/* W rozmowie komunikat nie może zasłaniać twarzy lektora */
+body.skupienie #toast { top: calc(160px + env(safe-area-inset-top)); }

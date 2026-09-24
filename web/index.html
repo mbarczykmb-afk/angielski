@@ -10,7 +10,8 @@
 <meta name="apple-mobile-web-app-title" content="Angielski AI">
 <meta name="description" content="Nauka angielskiego przez rozmowę z lektorem AI: ocena poziomu, plan 30 dni, powtórki słówek.">
 <link rel="manifest" href="./manifest.webmanifest">
-<link rel="icon" href="./icons/ikona-192.png">
+<link rel="icon" href="./icons/ikona.svg" type="image/svg+xml">
+<link rel="icon" href="./icons/ikona-192.png" type="image/png">
 <link rel="apple-touch-icon" href="./icons/ikona-192.png">
 <link rel="stylesheet" href="./app.css">
 <title>Angielski AI</title>
@@ -23,8 +24,13 @@
      EKRAN 1 — LOGOWANIE / WYBÓR PROFILU
      ============================================================ -->
 <div id="ekran-logowanie" class="ekran aktywny">
-  <div class="gora"><h1>Angielski AI</h1></div>
   <div class="widok aktywny">
+
+    <div class="logo-blok">
+      <img src="./icons/ikona-192.png" alt="" class="logo">
+      <h1>Angielski AI</h1>
+      <p class="podpis">Mów po angielsku codziennie. Lektor AI słucha i poprawia.</p>
+    </div>
 
     <div id="blok-adres" class="karta" hidden>
       <h2>Pierwsze uruchomienie</h2>
@@ -86,7 +92,7 @@
   <div class="widok aktywny">
 
     <div id="test-powitanie" class="karta akcent">
-      <h2>Zanim zaczniemy 👋</h2>
+      <h2>Zanim zaczniemy</h2>
       <p class="podpis">Krótki test pokaże, na jakim jesteś poziomie. Na tej podstawie ułożę Ci plan 30 dni rozmów dopasowany do Twoich braków.</p>
       <p class="podpis" style="margin-top:8px">12 zadań, jakieś 5 minut. Przy pytaniach otwartych możesz mówić albo pisać — odpowiadaj tak, jak umiesz, chodzi o realny obraz, nie o wynik.</p>
       <button class="btn" id="btn-start-testu" style="margin-top:12px">Zaczynamy</button>
@@ -97,8 +103,9 @@
       <p id="test-tresc" style="font-size:17px;margin-bottom:14px"></p>
       <div id="test-opcje"></div>
       <div id="test-otwarte" hidden>
-        <textarea id="test-odpowiedz" rows="4" placeholder="Odpowiedz po angielsku..."></textarea>
-        <button class="btn drugi maly" id="btn-test-mikrofon" style="margin-top:8px;width:100%">🎤 Powiedz odpowiedź</button>
+        <!-- Mówienie pierwsze, pisanie jako zapas: test ma sprawdzać to, czego aplikacja uczy -->
+        <button class="btn" id="btn-test-mikrofon">Powiedz odpowiedź</button>
+        <textarea id="test-odpowiedz" rows="3" placeholder="...albo wpisz po angielsku" style="margin-top:10px"></textarea>
       </div>
       <button class="btn" id="btn-test-dalej" style="margin-top:12px">Dalej</button>
     </div>
@@ -112,14 +119,15 @@
      ============================================================ -->
 <div id="ekran-glowny" class="ekran">
   <div class="gora">
+    <button class="btn-wstecz" id="btn-wstecz" hidden aria-label="Wróć"></button>
     <h1 id="naglowek-widoku">Dziś</h1>
     <div class="odznaki" id="odznaki">
       <span class="odznaka poziom" id="odznaka-poziom">—</span>
-      <span class="odznaka passa" id="odznaka-passa">🔥 0</span>
+      <span class="odznaka passa" id="odznaka-passa">0</span>
       <span class="odznaka xp" id="odznaka-xp">0 XP</span>
     </div>
     <!-- W trakcie rozmowy zastępuje odznaki, żeby zakończenie było zawsze pod ręką -->
-    <button class="btn-koniec" id="btn-zakoncz-gora" hidden>✓ Zakończ</button>
+    <button class="btn-koniec" id="btn-zakoncz-gora" hidden>Zakończ</button>
   </div>
 
   <!-- DZIŚ -->
@@ -127,11 +135,13 @@
 
   <!-- ROZMOWA -->
   <div id="w-rozmowa" class="widok">
-    <div id="rozmowa-brak" class="pusto">Wejdź w zakładkę <b>Dziś</b> i zacznij lekcję.</div>
+    <div id="rozmowa-brak" class="pusto">Nie trwa żadna rozmowa. Wróć do zakładki <b>Dziś</b> i zacznij lekcję.</div>
     <div id="rozmowa-tresc" hidden>
+      <!-- Gadająca głowa: przyklejona pod nagłówkiem, żeby było widać, czyja kolej -->
+      <div id="awatar-panel" class="awatar-panel" hidden></div>
       <div class="karta" id="rozmowa-material"></div>
       <div id="czat-lista"></div>
-      <button class="btn drugi" id="btn-zakoncz-lekcje" style="margin-top:6px">✓ Zakończ lekcję i podsumuj</button>
+      <button class="btn drugi" id="btn-zakoncz-lekcje" hidden>Zakończ</button>
     </div>
   </div>
 
@@ -149,23 +159,24 @@
     <div id="czat-podpowiedz"></div>
 
     <div class="wejscie-rzad">
-      <button class="btn-ikona" id="btn-klawiatura" title="Pisz zamiast mówić">⌨️</button>
-      <button class="mikrofon duzy" id="btn-mikrofon" title="Mów po angielsku">🎤</button>
-      <button class="btn-ikona" id="btn-powtorz" title="Powtórz ostatnie zdanie">🔁</button>
+      <button class="btn-ikona" id="btn-klawiatura" aria-label="Pisz zamiast mówić"></button>
+      <button class="btn-ikona" id="btn-pomoc" aria-label="Podpowiedz, co powiedzieć"></button>
+      <button class="mikrofon duzy" id="btn-mikrofon" aria-label="Mów po angielsku"></button>
+      <button class="btn-ikona" id="btn-powtorz" aria-label="Powtórz ostatnie zdanie"></button>
+      <button class="btn-ikona" id="btn-tlumacz" aria-label="Przetłumacz ostatnie zdanie"></button>
     </div>
 
     <div class="rzad-klawiatura">
       <textarea id="czat-pole" rows="1" placeholder="Type in English..."></textarea>
-      <button class="wyslij" id="btn-wyslij" title="Wyślij">➤</button>
+      <button class="wyslij" id="btn-wyslij" aria-label="Wyślij"></button>
     </div>
   </div>
 
   <nav class="nawigacja">
-    <button data-widok="dzis" class="aktywny"><span class="ikona">🏠</span>Dziś</button>
-    <button data-widok="rozmowa"><span class="ikona">💬</span>Rozmowa</button>
-    <button data-widok="slowa"><span class="ikona">📚</span>Słowa<span class="kropka" id="kropka-slowa" hidden></span></button>
-    <button data-widok="postep"><span class="ikona">📊</span>Postęp</button>
-    <button data-widok="ustawienia"><span class="ikona">⚙️</span>Więcej</button>
+    <button data-widok="dzis" data-ikona="dom" class="aktywny"><span class="ikona"></span>Dziś</button>
+    <button data-widok="slowa" data-ikona="slowa"><span class="ikona"></span>Słówka<span class="kropka" id="kropka-slowa" hidden></span></button>
+    <button data-widok="postep" data-ikona="postep"><span class="ikona"></span>Postęp</button>
+    <button data-widok="ustawienia" data-ikona="wiecej"><span class="ikona"></span>Więcej</button>
   </nav>
 </div>
 
@@ -178,6 +189,7 @@
 <script src="./js/logowanie.js"></script>
 <script src="./js/test.js"></script>
 <script src="./js/dzis.js"></script>
+<script src="./js/awatar.js"></script>
 <script src="./js/rozmowa.js"></script>
 <script src="./js/matura.js"></script>
 <script src="./js/slowa.js"></script>

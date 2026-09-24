@@ -256,12 +256,16 @@ export async function pobierzLekcje(env, uzytkownik, dzien) {
     "zakończone pytaniem, żeby uczeń od razu musiał się odezwać,\n" +
     '- "zadanieUcznia": jedno zdanie PO ANGIELSKU mówiące, co uczeń ma dziś osiągnąć w rozmowie ' +
     '(np. "Order a coffee and ask about the wifi password"),\n' +
+    '- "cele": DOKŁADNIE 3 krótkie cele rozmowy PO ANGIELSKU, każdy do 8 słów, zaczynające się ' +
+    'od czasownika (np. "Order a drink", "Ask about the price", "Say what you need it for"). ' +
+    "Muszą dać się sprawdzić w rozmowie — konkretna rzecz, którą uczeń mówi albo o którą pyta,\n" +
     "- 3 pytania pomocnicze po angielsku, gdyby uczeń utknął,\n" +
     '- "wskazowka" po polsku: jedna rzecz, na którą uczeń ma dziś szczególnie uważać.\n' +
     (slabe.length ? `\nSłabe strony ucznia do przepracowania: ${slabe.join("; ")}\n` : "") +
     "\nOdpowiedz WYŁĄCZNIE poprawnym JSON-em:\n" +
     '{"slownictwo":[{"en":"","pl":"","przyklad":""}],"struktury":["..."],"scenariusz":"...",' +
-    '"pierwszaKwestia":"...","zadanieUcznia":"...","pytaniaPomocnicze":["..."],"wskazowka":"..."}';
+    '"pierwszaKwestia":"...","zadanieUcznia":"...","cele":["...","...","..."],' +
+    '"pytaniaPomocnicze":["..."],"wskazowka":"..."}';
 
   const dane = await wywolajAIJson(
     env,
@@ -292,6 +296,11 @@ export async function czat(env, uzytkownik, dane) {
   const ustawienia = bezpieczneJson(uzytkownik.ustawienia, {});
   const wybor = ustawienia.modelRozmowy;
 
+  // Cele lekcji przychodzą z przeglądarki razem z tym, co już zaliczone.
+  // Przycinamy je, bo trafiają do promptu — długie teksty to koszt i ryzyko.
+  const cele = (Array.isArray(dane.cele) ? dane.cele : []).slice(0, 3).map((c) => tekst(c, 120)).filter(Boolean);
+  const juzZrobione = scalCele([], dane.celeZrobione, cele.length);
+
   // Wybór dotyczy wyłącznie tur rozmowy — ocena poziomu, plan i podsumowania
   // zawsze idą przez Opus 5, bo robi się je rzadko i muszą być dobre
   const ustawieniaModelu =
@@ -310,7 +319,9 @@ export async function czat(env, uzytkownik, dane) {
     "uczeń ma mówić więcej niż Ty.\n" +
     "2. Pisz tak, jak się mówi: formy ściągnięte, naturalna mowa potoczna. Żadnych wypunktowań, " +
     "nawiasów, emoji ani skrótów typu e.g. — to wszystko brzmi absurdalnie czytane na głos.\n" +
-    "3. ZAWSZE kończ pytaniem. Bez pytania rozmowa się urywa i uczeń przestaje mówić.\n" +
+    "3. ZAWSZE oddawaj uczniowi głos: zwykle pytaniem, czasem prośbą w rodzaju " +
+    '"Tell me about..." albo "What would you do?". Bez tego rozmowa się urywa, ale samo ' +
+    "pytanie w kółko brzmi sztucznie — zmieniaj formę.\n" +
     "4. Nie wykładaj gramatyki w rozmowie — zostań w roli.\n" +
     "5. Jeśli uczeń nie zrozumiał albo prosi o powtórzenie, powiedz to samo prościej i wolniej " +
     "innymi słowami. Nie dodawaj nowego wątku.\n" +
@@ -321,7 +332,12 @@ export async function czat(env, uzytkownik, dane) {
     "zrozumienie albo brzmią nienaturalnie. Drobiazgi puszczaj.\n" +
     "8. Jeśli uczeń odezwie się po polsku, wróć do angielskiego i podaj mu zwrot, którego szukał.\n" +
     '9. "noweSlowa" wypełniaj tylko wtedy, gdy sam użyłeś słowa spoza poziomu ucznia.\n' +
-    '10. "ocena" to 0-100: jak dobra komunikacyjnie była TA wypowiedź ucznia.\n\n' +
+    '10. "ocena" to 0-100: jak dobra komunikacyjnie była TA wypowiedź ucznia.\n' +
+    '11. "emocja" to mina Twojej twarzy na ekranie, reakcja na treść wypowiedzi ucznia: ' +
+    '"radosc" (dobra odpowiedź, coś miłego), "zaciekawienie" (ciekawa historia, chcesz więcej), ' +
+    '"zdziwienie" (coś zaskakującego), "troska" (uczeń się pogubił, coś smutnego), ' +
+    '"rozbawienie" (żart, zabawna sytuacja), "neutralna" (zwykła wymiana zdań). ' +
+    "Reaguj jak życzliwy człowiek, nie przesadzaj z radością.\n\n" +
     "POWTARZANIE ZA WZOREM — najważniejszy mechanizm nauki mówienia:\n" +
     'Gdy uczeń popełni błąd wart przećwiczenia, wypełnij "doPowtorzenia" poprawną frazą po angielsku ' +
     "(krótką, do 12 słów — tyle da się powtórzyć z pamięci).\n" +
@@ -336,9 +352,18 @@ export async function czat(env, uzytkownik, dane) {
         'wróć do rozmowy pytaniem o jej treść. Nie poprawiaj tej powtórki i nie proś o kolejną — ' +
         'ustaw "korekta": null oraz "doPowtorzenia": null.\n\n'
       : "") +
+    (cele.length
+      ? "CELE ROZMOWY, które uczeń ma dziś osiągnąć (widzi je na ekranie):\n" +
+        cele.map((c, i) => `${i}. ${c}`).join("\n") +
+        (juzZrobione.length ? `\nJuż zaliczone wcześniej: ${juzZrobione.join(", ")}.` : "") +
+        '\nW polu "celeZrobione" zwróć numery WSZYSTKICH celów zaliczonych do tej pory — ' +
+        "także tych z wcześniejszych wypowiedzi. Cel zaliczasz, gdy uczeń faktycznie to powiedział " +
+        "albo o to zapytał, nawet z błędami. Prowadź rozmowę tak, żeby naturalnie dało się dojść " +
+        "do celów jeszcze niezaliczonych — ale nie wymieniaj ich wprost.\n\n"
+      : "") +
     "Odpowiedz WYŁĄCZNIE poprawnym JSON-em:\n" +
     '{"odpowiedz":"...","korekta":{"bylo":"...","powinno":"...","dlaczego":"..."},' +
-    '"doPowtorzenia":"...","noweSlowa":[{"en":"","pl":""}],"ocena":75}\n' +
+    '"doPowtorzenia":"...","noweSlowa":[{"en":"","pl":""}],"ocena":75,"celeZrobione":[0],"emocja":"neutralna"}\n' +
     'Gdy nie ma czego poprawiać, ustaw "korekta": null.';
 
   // Ostatnie 8 wymian wystarczy na kontekst i trzyma koszt w ryzach
@@ -381,6 +406,111 @@ export async function czat(env, uzytkownik, dane) {
     doPowtorzenia: dane.powtorzenie ? null : tekst(odp.doPowtorzenia, 200) || null,
     noweSlowa: Array.isArray(odp.noweSlowa) ? odp.noweSlowa.slice(0, 5) : [],
     ocena: liczba(odp.ocena),
+    // Zaliczonego celu nie da się "odzaliczyć" — nawet jeśli model w tej turze
+    // zapomni go wymienić, zostaje odhaczony
+    celeZrobione: scalCele(juzZrobione, odp.celeZrobione, cele.length),
+    // Tylko miny, które twarz umie pokazać — cokolwiek innego to spokojna mina
+    emocja: EMOCJE.includes(odp.emocja) ? odp.emocja : "neutralna",
+  };
+}
+
+export const EMOCJE = ["neutralna", "radosc", "zaciekawienie", "zdziwienie", "troska", "rozbawienie"];
+
+/**
+ * Scala listy zaliczonych celów w jedną: bez duplikatów, tylko poprawne numery,
+ * posortowane. Wydzielone, bo odpowiedź modelu bywa niechlujna — liczby jako
+ * tekst, numery spoza zakresu, powtórzenia — a to trafia prosto do interfejsu.
+ */
+export function scalCele(wczesniej, nowe, ile) {
+  const wynik = new Set();
+  for (const lista of [wczesniej, nowe]) {
+    for (const n of Array.isArray(lista) ? lista : []) {
+      // Tylko liczby i napisy z samych cyfr. Number(null) i Number("") dają 0,
+      // więc bez tej bramki śmieć od modelu odhaczałby pierwszy cel za darmo.
+      if (typeof n !== "number" && !(typeof n === "string" && /^\d+$/.test(n.trim()))) continue;
+      const nr = Number(n);
+      if (Number.isInteger(nr) && nr >= 0 && nr < ile) wynik.add(nr);
+    }
+  }
+  return [...wynik].sort((a, b) => a - b);
+}
+
+// ============================================================
+// RANKING RODZINY — ligi z Duolingo, przycięte do kilku profili
+// ============================================================
+
+/**
+ * Kto w tym tygodniu uzbierał najwięcej XP. Duolingo ma ligi z obcymi;
+ * tu profile to domownicy, więc rywalizacja jest między nimi. Liczy się
+ * ostatnie 7 dni, a nie suma od początku — inaczej ktoś, kto zaczął
+ * wcześniej, prowadziłby na zawsze i nikomu by się nie chciało gonić.
+ */
+export async function ranking(env, uzytkownik, strefaMin = 0) {
+  const dzis = dzisISO(strefaMin);
+  const odKiedy = dataPlus(dzis, -6);
+
+  const [profile, tydzien] = await Promise.all([
+    env.DB.prepare("SELECT id, nazwa, streak, ostatni_dzien, xp FROM users").all(),
+    env.DB.prepare("SELECT user_id, SUM(xp) AS xp FROM progress WHERE data >= ? GROUP BY user_id").bind(odKiedy).all(),
+  ]);
+
+  const xpTygodnia = new Map((tydzien.results || []).map((r) => [r.user_id, liczba(r.xp)]));
+
+  const lista = (profile.results || []).map((u) => ({
+    nazwa: u.nazwa,
+    tydzien: xpTygodnia.get(u.id) || 0,
+    // Passa wygasa po dniu przerwy — tak samo jak w stanie profilu
+    streak: u.ostatni_dzien && roznicaDni(u.ostatni_dzien, dzis) > 1 ? 0 : liczba(u.streak),
+    ja: u.id === uzytkownik.id,
+  }));
+
+  lista.sort((a, b) => b.tydzien - a.tydzien || b.streak - a.streak || a.nazwa.localeCompare(b.nazwa));
+  return { odKiedy, ranking: lista };
+}
+
+// ============================================================
+// POMOC W ROZMOWIE — "co mogę teraz powiedzieć?"
+// ============================================================
+
+/**
+ * Tłumaczenie ostatniej kwestii lektora i trzy propozycje odpowiedzi.
+ * Pomysł z aplikacji Speak i Praktika: uczeń, który utknął, nie wychodzi
+ * z rozmowy, tylko dostaje podpowiedź i mówi dalej sam. Propozycje są
+ * do posłuchania i powtórzenia własnymi słowami, nie do klikania.
+ */
+export async function pomocWRozmowie(env, uzytkownik, dane) {
+  const kwestia = tekst(dane.kwestia, 1000).trim();
+  if (!kwestia) throw new BladApi(400, "Brak kwestii do wyjaśnienia.");
+
+  const poziom = uzytkownik.poziom || "A2";
+  const ustawienia = bezpieczneJson(uzytkownik.ustawienia, {});
+  const modelPomocy = ustawienia.modelRozmowy === "gemini" ? { dostawca: DOSTAWCA_GEMINI } : { model: MODEL_ROZMOWA };
+
+  const system =
+    `Pomagasz polskiemu uczniowi na poziomie ${poziom} w rozmowie po angielsku. ` +
+    "Uczeń nie zrozumiał ostatniej kwestii rozmówcy albo nie wie, co odpowiedzieć.\n" +
+    `Kontekst rozmowy: ${tekst(dane.scenariusz, 600) || tekst(dane.temat, 200) || "swobodna rozmowa"}\n\n` +
+    '1. "tlumaczenie": naturalne tłumaczenie kwestii na polski — tak, jak powiedziałby to Polak, ' +
+    "nie słowo w słowo.\n" +
+    '2. "propozycje": DOKŁADNIE 3 możliwe odpowiedzi ucznia PO ANGIELSKU, każda do 12 słów, ' +
+    `na poziomie ${poziom}, różne od siebie (np. zgoda, odmowa, dopytanie). ` +
+    'Do każdej "pl" — krótkie tłumaczenie.\n' +
+    "Formy ściągnięte, mowa potoczna, bez nawiasów i emoji — propozycje są czytane na głos.\n\n" +
+    'Odpowiedz WYŁĄCZNIE poprawnym JSON-em: {"tlumaczenie":"...","propozycje":[{"en":"...","pl":"..."}]}';
+
+  const odp = await wywolajAIJson(
+    env,
+    [{ role: "user", content: kwestia }],
+    { system, maxTokens: 500, ...modelPomocy },
+    { tlumaczenie: "", propozycje: [] }
+  );
+
+  return {
+    tlumaczenie: tekst(odp.tlumaczenie, 600),
+    propozycje: (Array.isArray(odp.propozycje) ? odp.propozycje : [])
+      .filter((p) => p && p.en)
+      .slice(0, 3)
+      .map((p) => ({ en: tekst(p.en, 160), pl: tekst(p.pl, 160) })),
   };
 }
 

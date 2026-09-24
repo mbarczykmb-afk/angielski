@@ -13,14 +13,17 @@ function podepnijTest() {
   document.getElementById("btn-start-testu").onclick = startTestu;
   document.getElementById("btn-test-dalej").onclick = dalejWTescie;
 
-  document.getElementById("btn-test-mikrofon").onclick = function () {
+  var mikrofonTestu = document.getElementById("btn-test-mikrofon");
+  mikrofonTestu.innerHTML = ik("mikrofon") + "Powiedz odpowiedź";
+
+  mikrofonTestu.onclick = function () {
     var pole = document.getElementById("test-odpowiedz");
     var przycisk = this;
-    przycisk.textContent = "🔴 Słucham — dotknij, by zakończyć";
+    przycisk.innerHTML = ik("mikrofon") + "Słucham — dotknij, by zakończyć";
 
     Mowa.sluchaj(
       function (tekst) { pole.value = tekst; },
-      function () { przycisk.textContent = "🎤 Powiedz odpowiedź"; }
+      function () { przycisk.innerHTML = ik("mikrofon") + "Powiedz odpowiedź"; }
     );
   };
 }

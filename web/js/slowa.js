@@ -25,9 +25,9 @@ function rysujSlowa() {
     html += '<div class="karta akcent srodek">' +
       "<h2>" + doPowtorki.length + " " + odmianaSlowek(doPowtorki.length) + " na dziś</h2>" +
       '<p class="podpis">Odsłuchaj, przypomnij sobie znaczenie, oceń się szczerze.</p>' +
-      '<button class="btn" id="btn-start-powtorki" style="margin-top:10px">▶ Zacznij powtórkę</button></div>';
+      '<button class="btn" id="btn-start-powtorki" style="margin-top:10px">' + ik("graj") + "Zacznij powtórkę</button></div>";
   } else {
-    html += '<div class="karta srodek"><h2>✓ Powtórki na dziś zrobione</h2>' +
+    html += '<div class="karta srodek"><h2>' + ik("ok") + " Powtórki na dziś zrobione</h2>" +
       '<p class="podpis">Kolejne słówka wrócą, gdy przyjdzie ich termin.</p></div>';
   }
 
@@ -36,7 +36,7 @@ function rysujSlowa() {
   html += '<div class="karta"><h3>Dodaj słówko</h3>' +
     '<input id="pole-nowe-slowo" type="text" placeholder="np. to look forward to" autocomplete="off">' +
     '<div class="rzad" style="margin-top:8px">' +
-    '<button class="btn drugi" id="btn-wyjasnij">✨ Uzupełnij AI</button>' +
+    '<button class="btn drugi" id="btn-wyjasnij">' + ik("iskry") + "Uzupełnij AI</button>" +
     '<button class="btn" id="btn-dodaj-slowo">Dodaj</button></div>' +
     '<div id="podglad-slowa" class="mini" style="margin-top:8px"></div></div>';
 
@@ -51,9 +51,10 @@ function rysujSlowa() {
       posortowane.map(function (s) {
         return '<div class="pozycja">' +
           '<div class="tresc"><b>' + esc(s.en) + "</b><small>" + esc(s.pl) +
-          " · pudełko " + s.pudelko + "/6 · wraca " + esc(s.nastepnaPowtorka) + "</small></div>" +
-          '<button class="glosnik" data-mow="' + esc(s.en) + '" style="background:none;border:none;color:var(--przygasly);font-size:16px;cursor:pointer">🔊</button>' +
-          '<button class="glosnik" data-usun="' + esc(s.id) + '" style="background:none;border:none;color:var(--czerwony);font-size:15px;cursor:pointer">✕</button>' +
+          " · poziom " + s.pudelko + "/6 · " + (s.doPowtorki ? "do powtórki" : "wraca " + dataLudzka(s.nastepnaPowtorka, App.stan.dzis)) +
+          "</small></div>" +
+          '<button class="btn-cichy" data-mow="' + esc(s.en) + '" aria-label="Posłuchaj">' + ik("glosnik") + "</button>" +
+          '<button class="btn-cichy usun" data-usun="' + esc(s.id) + '" aria-label="Usuń słówko">' + ik("kosz") + "</button>" +
           "</div>";
       }).join("") + "</div>";
   }
@@ -158,15 +159,15 @@ function rysujFiszke() {
       : '<div class="podpis">dotknij, żeby sprawdzić</div>') +
     "</div>" +
 
-    '<button class="btn drugi" id="btn-mow-fiszke" style="margin-top:10px">🔊 Posłuchaj</button>' +
+    '<button class="btn drugi" id="btn-mow-fiszke" style="margin-top:12px">' + ik("glosnik") + "Posłuchaj</button>" +
 
     (Slowa.odkryta
-      ? '<div class="rzad" style="margin-top:10px">' +
-        '<button class="btn niebezpieczny" id="btn-nie-umiem">Nie pamiętam</button>' +
-        '<button class="btn" id="btn-umiem">Umiem</button></div>'
+      ? '<div class="oceny">' +
+        '<button class="btn czerwony" id="btn-nie-umiem">' + ik("zamknij") + "Nie pamiętam</button>" +
+        '<button class="btn" id="btn-umiem">' + ik("ok") + "Umiem</button></div>"
       : "") +
 
-    '<button class="btn drugi" id="btn-przerwij-powtorke" style="margin-top:10px">Przerwij</button>';
+    '<button class="btn drugi" id="btn-przerwij-powtorke" style="margin-top:12px">Przerwij</button>';
 }
 
 function podepnijFiszke() {

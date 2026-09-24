@@ -15,7 +15,17 @@
 var Matura = {
   dane: null,      // ostatnio pobrany stan modułu
   minutnik: null,  // uchwyt odliczania czasu egzaminu
+  tryb: "pelny",   // wybrany w pigułkach tryb egzaminu
 };
+
+// Tryby jako pigułki, nie rozwijana lista — na telefonie lista ucinała
+// opisy w pół słowa, a cztery opcje mieszczą się na ekranie w całości
+var TRYBY_MATURY = [
+  ["pelny", "Pełny egzamin", "3 zadania · ok. 15 min · 30 pkt"],
+  ["zadanie1", "Zadanie 1", "Rozmowa z odgrywaniem roli"],
+  ["zadanie2", "Zadanie 2", "Opis ilustracji i 3 pytania"],
+  ["zadanie3", "Zadanie 3", "Materiał stymulujący"],
+];
 
 /* --- Wybór modułu --- */
 
@@ -52,7 +62,7 @@ function przelacznikModulu() {
   var m = modulAktywny();
   return '<div class="przelacz-modul">' +
     '<button data-modul="kurs"' + (m === "kurs" ? ' class="aktywny"' : "") + ">Kurs 30 dni</button>" +
-    '<button data-modul="matura"' + (m === "matura" ? ' class="aktywny"' : "") + ">🎓 Matura ustna</button>" +
+    '<button data-modul="matura"' + (m === "matura" ? ' class="aktywny"' : "") + ">" + ik("birret") + " Matura ustna</button>" +
     "</div>";
 }
 
@@ -103,23 +113,22 @@ function rysujPulpitMatury(d) {
   var widok = document.getElementById("w-dzis");
   var ocenione = (d.podejscia || []).filter(function (p) { return p.status === "zakonczony"; });
 
-  var html = przelacznikModulu();
+  var html = przelacznikModulu() + kartaWznowienia();
 
   /* --- Start egzaminu --- */
 
-  html += '<div class="karta akcent">' +
-    "<h3>Egzamin ustny — próba</h3>" +
-    '<h2 style="font-size:19px;margin-bottom:6px">Zestaw jak na maturze</h2>' +
+  html += '<div class="karta bohater">' +
+    '<div class="etykieta">Egzamin ustny — próba</div>' +
+    "<h2>Zestaw jak na maturze</h2>" +
     '<p class="podpis">Egzaminator mówi tylko po angielsku, nie poprawia i nie podpowiada — ' +
     "dokładnie jak na sali. Punkty i wszystkie błędy dostajesz na końcu.</p>" +
 
-    '<label for="pole-tryb-matury" style="margin-top:12px">Co ćwiczymy</label>' +
-    '<select id="pole-tryb-matury">' +
-    '<option value="pelny">Pełny egzamin — 3 zadania, ok. 15 min, 30 pkt</option>' +
-    '<option value="zadanie1">Tylko zadanie 1 — rozmowa z odgrywaniem roli</option>' +
-    '<option value="zadanie2">Tylko zadanie 2 — opis ilustracji</option>' +
-    '<option value="zadanie3">Tylko zadanie 3 — materiał stymulujący</option>' +
-    "</select>" +
+    '<label style="margin-top:14px">Co ćwiczymy</label>' +
+    '<div class="pigulki" id="pigulki-trybu">' +
+    TRYBY_MATURY.map(function (t) {
+      return '<button class="pigulka' + (Matura.tryb === t[0] ? " wybrana" : "") + '" data-tryb="' + t[0] + '">' +
+        "<b>" + t[1] + "</b><small>" + t[2] + "</small></button>";
+    }).join("") + "</div>" +
 
     '<label for="pole-obszar-matury">Zakres tematyczny</label>' +
     '<select id="pole-obszar-matury"><option value="">Losowy</option>' +
@@ -128,7 +137,7 @@ function rysujPulpitMatury(d) {
     }).join("") +
     "</select>" +
 
-    '<button class="btn" id="btn-start-matury" style="margin-top:12px">▶ Rozpocznij egzamin</button>' +
+    '<button class="btn" id="btn-start-matury">' + ik("mikrofon") + "Rozpocznij egzamin</button>" +
     '<p class="mini" style="margin-top:6px">Przed startem sprawdź, czy jesteś w cichym miejscu — ' +
     "egzamin trwa bez przerwy, tak jak prawdziwy.</p></div>";
 
@@ -186,14 +195,26 @@ function rysujPulpitMatury(d) {
 
   widok.innerHTML = html;
   podepnijPrzelacznikModulu(widok);
+  podepnijWznowienie();
+
+  widok.querySelectorAll("[data-tryb]").forEach(function (b) {
+    b.onclick = function () {
+      Matura.tryb = b.dataset.tryb;
+      widok.querySelectorAll("[data-tryb]").forEach(function (x) {
+        x.classList.toggle("wybrana", x === b);
+      });
+    };
+  });
 
   var start = document.getElementById("btn-start-matury");
   if (start) {
     start.onclick = function () {
-      startEgzaminu(
-        document.getElementById("pole-tryb-matury").value,
-        document.getElementById("pole-obszar-matury").value
-      );
+      // Drugi egzamin na raz zgubiłby pierwszy — najpierw trzeba skończyć tamten
+      if (App.matura) {
+        toast("Masz rozpoczęty egzamin — wróć do niego albo go zakończ.", false);
+        return;
+      }
+      startEgzaminu(Matura.tryb, document.getElementById("pole-obszar-matury").value);
     };
   }
 
@@ -297,7 +318,7 @@ function kartaIlustracji(zadanie) {
 
   if (f && f.url) {
     var podpis = [f.autor, f.zrodlo, f.licencja].filter(Boolean).join(" · ");
-    return '<div class="ilustracja"><b>🖼 Ilustracja</b>' +
+    return '<div class="ilustracja"><b>' + ik("obraz") + " Ilustracja</b>" +
       '<img src="' + esc(f.url) + '" alt="Zdjęcie do opisania" loading="lazy" referrerpolicy="no-referrer">' +
       (podpis ? '<small class="zrodlo">' + esc(podpis) + "</small>" : "") +
       "<small>Opisz to zdjęcie po angielsku: kto, gdzie, co robi, co widać w tle.</small>" +
@@ -308,7 +329,7 @@ function kartaIlustracji(zadanie) {
       "</div>";
   }
 
-  return '<div class="ilustracja"><b>🖼 Ilustracja</b><p>' + esc(zadanie.ilustracja || "") + "</p>" +
+  return '<div class="ilustracja"><b>' + ik("obraz") + " Ilustracja</b><p>" + esc(zadanie.ilustracja || "") + "</p>" +
     "<small>Nie udało się dobrać zdjęcia, więc scena jest opisana słowami. " +
     "Opisz ją po angielsku tak, jakbyś ją widział.</small></div>";
 }
@@ -321,12 +342,16 @@ function rysujKarteMatury() {
   document.getElementById("rozmowa-tresc").hidden = false;
   // Po ostatniej kwestii egzaminatora mikrofon jest już niepotrzebny
   document.getElementById("czat-wejscie").hidden = App.widok !== "rozmowa" || m.etap === "koniec";
-  document.getElementById("btn-zakoncz-lekcje").textContent = "✓ Zakończ i oceń";
+  Awatar.pokaz("egzaminator");
+
+  // Na prawdziwym egzaminie nikt nie tłumaczy ani nie podpowiada
+  document.getElementById("btn-pomoc").hidden = true;
+  document.getElementById("btn-tlumacz").hidden = true;
 
   var z = m.zestaw || {};
   var html =
     '<div class="matura-gora">' +
-    '<span class="odznaka poziom">🎓 ' + esc(ETYKIETY_ETAPOW[m.etap] || m.etap) + "</span>" +
+    '<span class="odznaka poziom">' + ik("birret") + esc(ETYKIETY_ETAPOW[m.etap] || m.etap) + "</span>" +
     '<span class="odznaka" id="matura-czas">0:00</span></div>';
 
   if (m.etap === "wstep") {
@@ -359,7 +384,7 @@ function rysujKarteMatury() {
       "Dotknij „Zakończ i oceń”, żeby zobaczyć punktację i błędy.</p>";
   } else {
     html += '<button class="btn drugi maly" id="btn-matura-dalej" style="margin-top:12px;width:100%">' +
-      "Przejdź do następnej części →</button>" +
+      "Przejdź do następnej części" + ik("strzalka") + "</button>" +
       '<p class="mini">Użyj, jeśli utknąłeś. Na prawdziwym egzaminie tej możliwości nie ma — ' +
       "pominięte elementy kosztują punkty.</p>";
   }
@@ -402,6 +427,7 @@ async function wyslijNaMaturze(tekstZMowy, sek, wymusDalej) {
   przewinNaDol();
 
   document.getElementById("btn-wyslij").disabled = true;
+  Awatar.ustawStan("mysli");
 
   try {
     var odp = await Api.wyslij("/api/matura/tura", {
@@ -413,6 +439,7 @@ async function wyslijNaMaturze(tekstZMowy, sek, wymusDalej) {
     });
 
     pisze.remove();
+    Awatar.ustawStan("czeka");
 
     var zmianaEtapu = odp.etap && odp.etap !== App.matura.etap;
     App.matura.etap = odp.etap || App.matura.etap;
@@ -502,17 +529,17 @@ function pasekKryterium(etykieta, dane, przypis) {
 
 function pokazWynikMatury(wynik, archiwalne) {
   var o = wynik.ocena || {};
+  Awatar.schowaj();
 
   document.getElementById("czat-lista").innerHTML = "";
   document.getElementById("czat-wejscie").hidden = true;
   document.getElementById("btn-zakoncz-gora").hidden = true;
-  document.getElementById("odznaki").hidden = false;
   document.getElementById("rozmowa-tresc").hidden = true;
   document.getElementById("rozmowa-brak").hidden = true;
 
   var zdany = !!o.zdany;
   var html =
-    '<div class="srodek" style="font-size:40px">' + (zdany ? "🎓" : "📋") + "</div>" +
+    '<div class="srodek" style="color:' + (zdany ? "var(--zolty)" : "var(--przygasly)") + '">' + ik(zdany ? "puchar" : "birret", "duza") + "</div>" +
     '<h2 class="srodek" style="font-size:26px">' + (o.razem || 0) + " / " + (o.maks || 30) + " pkt</h2>" +
     '<p class="srodek"><span class="tag ' + (zdany ? "mocny" : "slaby") + '">' +
     (o.procent || 0) + "% · " + (zdany ? "zdane" : "poniżej progu 30%") + "</span></p>" +
@@ -550,7 +577,7 @@ function pokazWynikMatury(wynik, archiwalne) {
         return '<div class="blad">' +
           (b.bylo ? '<div class="bylo">' + esc(b.bylo) + "</div>" : "") +
           '<div class="powinno">' + esc(b.powinno || "") +
-          ' <button class="glosnik" data-mow="' + esc(b.powinno || "") + '">🔊</button></div>' +
+          ' <button class="glosnik" data-mow="' + esc(b.powinno || "") + '" aria-label="Posłuchaj">' + ik("glosnik") + "</button></div>" +
           (b.dlaczego ? '<div class="czemu">' + esc(b.dlaczego) + "</div>" : "") +
           "</div>";
       }).join("")
@@ -564,7 +591,7 @@ function pokazWynikMatury(wynik, archiwalne) {
       o.zwroty.map(function (z) {
         return '<div class="pozycja"><div class="tresc"><b>' + esc(z.en) + "</b><small>" +
           esc(z.pl) + (z.kiedy ? " · " + esc(z.kiedy) : "") + "</small></div>" +
-          '<button class="btn maly drugi" data-mow="' + esc(z.en) + '">🔊</button></div>';
+          '<button class="btn-cichy" data-mow="' + esc(z.en) + '" aria-label="Posłuchaj">' + ik("glosnik") + "</button></div>";
       }).join("");
   }
 

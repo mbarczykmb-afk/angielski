@@ -57,11 +57,21 @@ var Mowa = {
     function koniec() {
       if (zakonczono) return;
       zakonczono = true;
+      if (typeof Awatar !== "undefined" && Awatar.stan === "mowi") Awatar.ustawStan("czeka");
       if (onKoniec) onKoniec();
     }
 
     wypowiedz.onend = koniec;
     wypowiedz.onerror = koniec;
+
+    // Twarz lektora rusza ustami w rytm mowy. Granice słów zgłasza nie każdy
+    // syntezator — wtedy awatar i tak porusza ustami sam z siebie.
+    wypowiedz.onstart = function () {
+      if (typeof Awatar !== "undefined") Awatar.ustawStan("mowi");
+    };
+    wypowiedz.onboundary = function () {
+      if (typeof Awatar !== "undefined") Awatar.slowo();
+    };
 
     // Zabezpieczenie: w Chrome zdarza się, że onend nie przychodzi wcale.
     // Bez tego rozmowa bez rąk potrafiłaby zawisnąć na dobre.
@@ -154,6 +164,7 @@ var Mowa = {
 
     r.onstart = function () {
       self.slucha = true;
+      if (typeof Awatar !== "undefined") Awatar.ustawStan("slucha");
       document.getElementById("btn-mikrofon").classList.add("slucha");
       // Na rozpoczęcie mówienia dajemy więcej czasu niż na pauzę w środku zdania
       odlozKoniec(pauza + 4000);
@@ -181,6 +192,7 @@ var Mowa = {
     r.onend = function () {
       clearTimeout(licznik);
       self.slucha = false;
+      if (typeof Awatar !== "undefined" && Awatar.stan === "slucha") Awatar.ustawStan("czeka");
 
       var przycisk = document.getElementById("btn-mikrofon");
       if (przycisk) przycisk.classList.remove("slucha");

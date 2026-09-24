@@ -1,5 +1,5 @@
 /* ============================================================
-   Widok "Dziś" — lekcja dnia, passa, plan 30 dni
+   Widok "Dziś" — lekcja dnia, cel dnia, plan 30 dni
    ============================================================ */
 
 function rysujDzis() {
@@ -10,8 +10,8 @@ function rysujDzis() {
   }
 
   // Dwa moduły dzielą tę zakładkę: kurs konwersacyjny i przygotowanie do matury.
-  // Nawigacja ma już pięć pozycji, a szósta na telefonie robi się nieczytelna —
-  // dlatego wybór modułu jest przełącznikiem na górze, nie kolejną ikoną.
+  // Wybór modułu to przełącznik na górze, a nie kolejna ikona w menu —
+  // menu ma cztery pozycje i tak ma zostać, żeby każda była łatwa do trafienia.
   if (modulAktywny() === "matura") {
     rysujMature();
     return;
@@ -20,69 +20,121 @@ function rysujDzis() {
   rysujDzisKurs();
 }
 
+/* --- Wspólne klocki ekranu głównego (używa ich też moduł matury) --- */
+
+function minutyDzis() {
+  var s = App.stan;
+  return Math.round(s.postep
+    .filter(function (p) { return p.data === s.dzis; })
+    .reduce(function (a, p) { return a + p.czasSek; }, 0) / 60);
+}
+
+// Pierścień celu dnia. Liczymy minuty, nie XP — minuty mówienia są tym,
+// co faktycznie uczy, a cel ustawia się w minutach przy zakładaniu profilu.
+function pierscienCelu() {
+  var cel = App.stan.user.celDzienny || 15;
+  var minuty = minutyDzis();
+  var udzial = Math.min(1, minuty / cel);
+  var obwod = 2 * Math.PI * 26;
+
+  return '<div class="pierscien" title="Cel dnia: ' + cel + ' min">' +
+    '<svg viewBox="0 0 62 62"><circle class="tlo-kola" cx="31" cy="31" r="26" fill="none" stroke-width="6"/>' +
+    '<circle class="wypelnienie" cx="31" cy="31" r="26" fill="none" stroke-width="6" stroke-linecap="round" ' +
+    'stroke-dasharray="' + obwod.toFixed(1) + '" stroke-dashoffset="' + (obwod * (1 - udzial)).toFixed(1) + '"/></svg>' +
+    '<div class="wartosc"><b>' + minuty + "</b><small>z " + cel + " min</small></div></div>";
+}
+
+function powitanie() {
+  var u = App.stan.user;
+  var godzina = new Date().getHours();
+  var zwrot = godzina < 5 ? "Dobry wieczór" : godzina < 12 ? "Dzień dobry" : godzina < 18 ? "Cześć" : "Dobry wieczór";
+
+  var minuty = minutyDzis();
+  var cel = u.celDzienny || 15;
+  var podpis = minuty >= cel ? "Cel dnia zrobiony. Świetnie!"
+    : u.streak > 1 ? "Seria " + u.streak + " " + odmianaDni(u.streak) + " — nie przerywaj jej dziś."
+    : "Kilkanaście minut mówienia robi różnicę.";
+
+  return '<div class="powitanie"><div class="tekst"><h2>' + zwrot + ", " + esc(u.nazwa) + "</h2>" +
+    "<p>" + podpis + "</p></div>" + pierscienCelu() + "</div>";
+}
+
+// Niedokończona rozmowa nie może zniknąć z oczu po wyjściu z niej
+function kartaWznowienia() {
+  if (App.matura) {
+    return '<div class="karta wznow"><div class="tresc"><b>Trwa egzamin ustny</b>' +
+      '<p class="mini">' + esc(App.matura.trybNazwa || "") + "</p></div>" +
+      '<button class="btn maly" id="btn-wznow">Wróć' + ik("dalej") + "</button></div>";
+  }
+  if (App.lekcja) {
+    return '<div class="karta wznow"><div class="tresc"><b>Trwa rozmowa — dzień ' + App.lekcja.dzien + "</b>" +
+      '<p class="mini">' + esc(App.lekcja.temat || "") + "</p></div>" +
+      '<button class="btn maly" id="btn-wznow">Wróć' + ik("dalej") + "</button></div>";
+  }
+  return "";
+}
+
+function podepnijWznowienie() {
+  var wznow = document.getElementById("btn-wznow");
+  if (wznow) wznow.onclick = function () { pokazWidok("rozmowa"); };
+}
+
+/* --- Kurs 30 dni --- */
+
 function rysujDzisKurs() {
   var widok = document.getElementById("w-dzis");
   var s = App.stan;
   var dzien = s.plan.find(function (p) { return p.dzien === s.biezacyDzien; });
   var ukonczone = s.plan.filter(function (p) { return p.status === "ukonczony"; }).length;
   var doPowtorki = liczbaDoPowtorki();
-  var html = przelacznikModulu();
+
+  var html = przelacznikModulu() + powitanie() + kartaWznowienia();
 
   /* --- Karta lekcji dnia --- */
 
   if (!dzien) {
-    html += '<div class="karta akcent srodek">' +
-      "<h2>Brak planu</h2>" +
-      '<p class="podpis">Zrób test poziomujący, a ułożę Ci plan 30 dni.</p>' +
-      '<button class="btn" onclick="pokazEkran(\'test\')" style="margin-top:10px">Zrób test</button></div>';
+    html += '<div class="karta bohater srodek">' +
+      '<div class="etykieta">Na start</div>' +
+      "<h2>Sprawdźmy Twój poziom</h2>" +
+      '<p class="podpis">Pięć minut testu, a ułożę Ci plan 30 dni rozmów dopasowany do Twoich braków.</p>' +
+      '<button class="btn" id="btn-zrob-test">' + ik("graj") + "Zrób test</button></div>";
   } else if (s.zrobioneDzis && dzien.status === "ukonczony") {
-    html += '<div class="karta akcent srodek">' +
-      '<div style="font-size:42px">✓</div>' +
-      "<h2>Dzisiejsza lekcja zrobiona</h2>" +
-      '<p class="podpis">Dobra robota. Jutro dzień ' + (s.biezacyDzien) + ".</p>" +
-      (doPowtorki
-        ? '<button class="btn" onclick="pokazWidok(\'slowa\')" style="margin-top:10px">Powtórz ' + doPowtorki + " " + odmianaSlowek(doPowtorki) + "</button>"
-        : '<button class="btn drugi" id="btn-dodatkowa" style="margin-top:10px">Jeszcze jedna rozmowa</button>') +
-      "</div>";
+    html += '<div class="karta bohater srodek">' +
+      '<div class="etykieta">' + ik("ok") + " Dzisiejsza lekcja zrobiona</div>" +
+      "<h2>Dobra robota!</h2>" +
+      '<p class="podpis">Jutro dzień ' + s.biezacyDzien + ". Możesz jeszcze pogadać albo powtórzyć słówka.</p>" +
+      '<button class="btn" id="btn-dodatkowa">' + ik("rozmowa") + "Jeszcze jedna rozmowa</button></div>";
   } else {
-    html += '<div class="karta akcent">' +
-      '<h3>Dzień ' + dzien.dzien + " z 30</h3>" +
-      '<h2 style="font-size:19px;margin-bottom:6px">' + esc(dzien.temat) + "</h2>" +
+    html += '<div class="karta bohater">' +
+      '<div class="etykieta">Dzień ' + dzien.dzien + " z " + s.plan.length + "</div>" +
+      "<h2>" + esc(dzien.temat) + "</h2>" +
       '<p class="podpis">' + esc(dzien.cel) + "</p>" +
-      '<div class="pasek"><div style="width:' + Math.round((ukonczone / Math.max(1, s.plan.length)) * 100) + '%"></div></div>' +
-      '<p class="mini">' + ukonczone + " z " + s.plan.length + " dni za Tobą</p>" +
-      '<button class="btn" id="btn-start-lekcji" style="margin-top:12px">▶ Zacznij rozmowę</button>' +
-      "</div>";
+      '<button class="btn" id="btn-start-lekcji">' + ik("mikrofon") + "Zacznij rozmowę</button></div>";
   }
 
-  /* --- Statystyki --- */
+  /* --- Kafelki: powtórki i seria --- */
 
-  html += '<div class="karta"><div class="statystyki">' +
-    '<div class="statystyka"><b style="color:var(--zolty)">' + s.user.streak + "</b><span>dni z rzędu</span></div>" +
-    '<div class="statystyka"><b style="color:var(--zielony2)">' + s.user.xp + "</b><span>XP</span></div>" +
-    '<div class="statystyka"><b style="color:var(--niebieski)">' + s.slowka.length + "</b><span>słówek</span></div>" +
-    "</div></div>";
+  html += '<div class="kafelki">' +
+    '<button class="kafelek' + (doPowtorki ? " uwaga" : "") + '" id="kafelek-powtorki">' + ik("slowa") +
+    "<b>" + doPowtorki + "</b><span>" + (doPowtorki ? odmianaSlowek(doPowtorki) + " do powtórki" : "powtórki zrobione") + "</span></button>" +
+    '<button class="kafelek" id="kafelek-seria">' + ik("plomien") +
+    "<b>" + s.user.streak + "</b><span>" + odmianaDni(s.user.streak) + " z rzędu</span></button>" +
+    "</div>";
 
-  /* --- Powtórki --- */
-
-  if (doPowtorki) {
-    html += '<div class="karta" style="border-color:var(--zolty)">' +
-      '<h2>📚 ' + doPowtorki + " " + odmianaSlowek(doPowtorki) + " do powtórki</h2>" +
-      '<p class="podpis">Krótka runda fiszek utrwali to, czego użyłeś w rozmowach.</p>' +
-      '<button class="btn drugi" onclick="pokazWidok(\'slowa\')" style="margin-top:10px">Powtórz teraz</button></div>';
-  }
-
-  /* --- Plan --- */
+  /* --- Plan: oś 30 kropek i najbliższe dni --- */
 
   if (s.plan.length) {
-    html += '<div class="karta"><h3>Plan 30 dni</h3><div id="lista-planu">' +
+    var nastepne = s.plan.filter(function (p) { return p.dzien >= s.biezacyDzien; }).slice(0, 3);
+
+    html += '<div class="karta"><h3>Plan 30 dni · ' + ukonczone + " za Tobą</h3>" +
+      '<div class="os-planu">' +
       s.plan.map(function (p) {
-        var klasa = p.status === "ukonczony" ? "ukonczony" : (p.dzien === s.biezacyDzien ? "biezacy" : "");
-        return '<div class="dzien-planu ' + klasa + '" data-dzien="' + p.dzien + '">' +
-          '<div class="numer">' + (p.status === "ukonczony" ? "✓" : p.dzien) + "</div>" +
-          '<div class="opis">' + esc(p.temat) + "<small>" + esc(p.cel) + "</small></div></div>";
-      }).join("") +
-      "</div></div>";
+        var klasa = p.status === "ukonczony" ? "zrobiony" : (p.dzien === s.biezacyDzien ? "biezacy" : "");
+        return '<span class="' + klasa + '" title="Dzień ' + p.dzien + '"></span>';
+      }).join("") + "</div>" +
+      nastepne.map(wierszPlanu).join("") +
+      '<details><summary>Cały plan</summary><div id="lista-planu">' +
+      s.plan.map(wierszPlanu).join("") + "</div></details></div>";
   }
 
   widok.innerHTML = html;
@@ -90,12 +142,19 @@ function rysujDzisKurs() {
   /* --- Zdarzenia --- */
 
   podepnijPrzelacznikModulu(widok);
+  podepnijWznowienie();
 
   var start = document.getElementById("btn-start-lekcji");
   if (start) start.onclick = function () { otworzLekcje(s.biezacyDzien); };
 
   var dodatkowa = document.getElementById("btn-dodatkowa");
   if (dodatkowa) dodatkowa.onclick = function () { otworzLekcje(s.biezacyDzien); };
+
+  var test = document.getElementById("btn-zrob-test");
+  if (test) test.onclick = function () { pokazEkran("test"); };
+
+  document.getElementById("kafelek-powtorki").onclick = function () { pokazWidok("slowa"); };
+  document.getElementById("kafelek-seria").onclick = function () { pokazWidok("postep"); };
 
   // Wcześniejsze dni wolno otworzyć ponownie — powtórka rozmowy nie zaszkodzi
   widok.querySelectorAll(".dzien-planu").forEach(function (el) {
@@ -110,10 +169,22 @@ function rysujDzisKurs() {
   });
 }
 
+function wierszPlanu(p) {
+  var s = App.stan;
+  var klasa = p.status === "ukonczony" ? "ukonczony" : (p.dzien === s.biezacyDzien ? "biezacy" : "");
+  return '<div class="dzien-planu ' + klasa + '" data-dzien="' + p.dzien + '">' +
+    '<div class="numer">' + (p.status === "ukonczony" ? ik("ok") : p.dzien) + "</div>" +
+    '<div class="opis">' + esc(p.temat) + "<small>" + esc(p.cel) + "</small></div></div>";
+}
+
 function odmianaSlowek(n) {
   if (n === 1) return "słówko";
   var ostatnia = n % 10;
   var przedostatnia = Math.floor(n / 10) % 10;
   if (ostatnia >= 2 && ostatnia <= 4 && przedostatnia !== 1) return "słówka";
   return "słówek";
+}
+
+function odmianaDni(n) {
+  return n === 1 ? "dzień" : "dni";
 }

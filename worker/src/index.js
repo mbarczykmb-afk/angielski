@@ -26,6 +26,8 @@ import {
   zapiszPowtorke,
   usunSlowko,
   wyjasnijSlowko,
+  pomocWRozmowie,
+  ranking,
 } from "./nauka.js";
 import { listaKopii, utworzKopieRecznie, eksportuj, przywroc, przywrocZMigawki } from "./kopie.js";
 import {
@@ -40,7 +42,7 @@ import { diagnostyka } from "./ai.js";
 
 // Znacznik wersji kodu — widoczny w /api/health.
 // Pozwala sprawdzic golym okiem, ktora wersja naprawde dziala na serwerze.
-const WERSJA_KODU = "2026-09-19-matura-profile";
+const WERSJA_KODU = "2026-09-24-matura-interfejs";
 import {
   rozpocznijPolaczenie,
   obsluzPowrot,
@@ -181,6 +183,14 @@ async function trasuj(request, env, ctx) {
 
   if (sciezka === "/api/czat" && metoda === "POST") {
     return json(await czat(env, uzytkownik, body), env);
+  }
+
+  if (sciezka === "/api/czat/pomoc" && metoda === "POST") {
+    return json(await pomocWRozmowie(env, uzytkownik, body), env);
+  }
+
+  if (sciezka === "/api/ranking" && metoda === "GET") {
+    return json(await ranking(env, uzytkownik, strefaMin), env);
   }
 
   const dopasowanieHistorii = sciezka.match(/^\/api\/czat\/(\d+)$/);

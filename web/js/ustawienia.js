@@ -16,7 +16,7 @@ function rysujUstawienia() {
     /* --- Profil --- */
     '<div class="karta"><h3>Profil</h3>' +
     '<h2 style="font-size:19px">' + esc(u.nazwa) + "</h2>" +
-    '<p class="podpis">' + (u.poziom || "brak oceny") + " · " + u.xp + " XP · 🔥 " + u.streak + " dni</p>" +
+    '<p class="podpis">' + (u.poziom || "brak oceny") + " · " + u.xp + " XP · " + ik("plomien") + " " + u.streak + " " + odmianaDni(u.streak) + "</p>" +
     // Zmiana imienia rusza tylko etykietę profilu. Postępy, plan, słówka
     // i rozmowy wiszą na jego identyfikatorze, więc nic z nich nie przepada.
     '<label for="pole-nazwa">Imię na profilu</label>' +
@@ -35,6 +35,7 @@ function rysujUstawienia() {
     przelacznik("ust-glos", "Lektor czyta odpowiedzi", ust.glos !== false) +
     przelacznik("ust-bez-rak", "Rozmowa bez rąk", ust.bezRak !== false) +
     przelacznik("ust-tryb-sluchania", "Tekst zakryty do dotknięcia", ust.trybSluchania !== false) +
+    przelacznik("ust-awatar", "Gadająca głowa lektora", ust.awatar !== false) +
     '<p class="mini" style="margin-top:8px">Bez rąk: mikrofon włącza się sam, gdy lektor skończy mówić. ' +
     "Tekst zakryty: najpierw słuchasz, a zapis odsłaniasz dotknięciem dopiero, gdy czegoś nie wychwycisz.</p>" +
     '<label for="pole-pauza">Ile ciszy kończy Twoją wypowiedź: <span id="etykieta-pauza">' +
@@ -44,7 +45,7 @@ function rysujUstawienia() {
     "bez przerywania w pół myśli.</p>" +
     '<label for="pole-tempo">Tempo lektora: <span id="etykieta-tempo">' + (ust.tempoMowy || 0.95) + "×</span></label>" +
     '<input id="pole-tempo" type="range" min="0.6" max="1.3" step="0.05" value="' + (ust.tempoMowy || 0.95) + '">' +
-    '<button class="btn drugi" id="btn-test-glosu" style="margin-top:8px">🔊 Posłuchaj próbki</button>' +
+    '<button class="btn drugi" id="btn-test-glosu" style="margin-top:8px">' + ik("glosnik") + "Posłuchaj próbki</button>" +
     '<p class="mini" style="margin-top:8px">' + statusMowy() + "</p></div>" +
 
     /* --- Model --- */
@@ -60,9 +61,9 @@ function rysujUstawienia() {
     /* --- Kopie zapasowe --- */
     '<div class="karta"><h3>Kopia zapasowa</h3>' +
     '<p class="podpis">Postępy zapisują się same po każdej lekcji. Tutaj zrobisz kopię ręcznie albo pobierzesz ją do pliku.</p>' +
-    '<button class="btn drugi" id="btn-kopia-teraz" style="margin-top:10px">💾 Zrób kopię teraz</button>' +
-    '<button class="btn drugi" id="btn-eksport">⬇ Pobierz plik z postępami</button>' +
-    '<button class="btn drugi" id="btn-import">⬆ Wczytaj z pliku</button>' +
+    '<button class="btn drugi" id="btn-kopia-teraz" style="margin-top:10px">' + ik("zapisz") + "Zrób kopię teraz</button>" +
+    '<button class="btn drugi" id="btn-eksport">' + ik("pobierz") + "Pobierz plik z postępami</button>" +
+    '<button class="btn drugi" id="btn-import">' + ik("wyslij") + "Wczytaj z pliku</button>" +
     '<input id="pole-plik" type="file" accept="application/json,.json" hidden>' +
     '<div id="lista-kopii" style="margin-top:12px"></div></div>' +
 
@@ -148,8 +149,8 @@ function przelacznik(id, etykieta, wlaczony) {
 
 function statusMowy() {
   var czesci = [];
-  czesci.push(Mowa.obslugiwaneSluchanie() ? "🎤 Mikrofon: działa" : "🎤 Mikrofon: brak wsparcia (użyj Chrome)");
-  czesci.push(Mowa.obslugiwaneMowienie() ? "🔊 Lektor: działa" : "🔊 Lektor: brak wsparcia");
+  czesci.push(Mowa.obslugiwaneSluchanie() ? "Mikrofon: działa" : "Mikrofon: brak wsparcia (użyj Chrome)");
+  czesci.push(Mowa.obslugiwaneMowienie() ? "Lektor: działa" : "Lektor: brak wsparcia");
   return czesci.join(" · ");
 }
 
@@ -162,6 +163,7 @@ function podepnijUstawienia() {
       mikrofon: true,
       bezRak: document.getElementById("ust-bez-rak").checked,
       trybSluchania: document.getElementById("ust-tryb-sluchania").checked,
+      awatar: document.getElementById("ust-awatar").checked,
       pauzaMs: Number(document.getElementById("pole-pauza").value),
       tempoMowy: Number(document.getElementById("pole-tempo").value),
       modelRozmowy: document.getElementById("pole-model").value,
@@ -181,7 +183,7 @@ function podepnijUstawienia() {
     }
   }
 
-  ["ust-glos", "ust-bez-rak", "ust-tryb-sluchania", "pole-model", "pole-cel-dzienny"].forEach(function (id) {
+  ["ust-glos", "ust-bez-rak", "ust-tryb-sluchania", "ust-awatar", "pole-model", "pole-cel-dzienny"].forEach(function (id) {
     document.getElementById(id).onchange = zapisz;
   });
 
@@ -428,8 +430,8 @@ async function wczytajDysk() {
     }
 
     blok.innerHTML =
-      '<p class="podpis">✓ Połączono' + (status.email ? " jako " + esc(status.email) : "") + "</p>" +
-      '<button class="btn drugi" id="btn-kopia-dysk" style="margin-top:10px">☁ Wyślij kopię teraz</button>' +
+      '<p class="podpis">' + ik("ok") + " Połączono" + (status.email ? " jako " + esc(status.email) : "") + "</p>" +
+      '<button class="btn drugi" id="btn-kopia-dysk" style="margin-top:10px">' + ik("chmura") + "Wyślij kopię teraz</button>" +
       '<div id="pliki-dysku" style="margin-top:12px"><p class="mini">Wczytuję listę...</p></div>' +
       '<button class="btn niebezpieczny" id="btn-rozlacz-dysk" style="margin-top:10px">Rozłącz Dysk</button>';
 
