@@ -128,7 +128,8 @@ async function pokazWersje() {
 
   try {
     var zdrowie = await Api.wywolaj("/api/health");
-    el.textContent = "Aplikacja: " + aplikacja + " · Serwer: " + (zdrowie.wersja || "nieznana");
+    el.textContent = "Aplikacja: " + aplikacja + " · Serwer: " + (zdrowie.wersja || "nieznana") +
+      " · Gemini: " + (zdrowie.gemini ? "klucz jest ✓" : "brak klucza");
   } catch (e) {
     el.textContent = "Aplikacja: " + aplikacja + " · Serwer: nie odpowiada";
   }
@@ -137,7 +138,9 @@ async function pokazWersje() {
 // Pytamy Workera, czy ma klucz Gemini — inaczej użytkownik wybrałby model,
 // który wysypie się dopiero w środku rozmowy
 async function sprawdzDostawcow() {
-  if (Ustawienia.geminiDostepny !== null) return;
+  // Pamiętamy tylko potwierdzenie. Brak klucza sprawdzamy przy każdym wejściu —
+  // ktoś mógł go właśnie dodać w Cloudflare, a ostrzeżenie wisiałoby do restartu.
+  if (Ustawienia.geminiDostepny === true) return;
 
   try {
     var zdrowie = await Api.wywolaj("/api/health");
@@ -145,8 +148,10 @@ async function sprawdzDostawcow() {
 
     var opis = document.getElementById("opis-modelu");
     var pole = document.getElementById("pole-model");
-    if (opis && pole && pole.value === "gemini" && !Ustawienia.geminiDostepny) {
-      opis.textContent = "⚠ Worker nie ma klucza Gemini — rozmowa nie ruszy. Dodaj sekret GEMINI_API_KEY albo wybierz inny model.";
+    if (opis && pole && pole.value === "gemini") {
+      opis.textContent = Ustawienia.geminiDostepny
+        ? "Najniższy koszt tury. Klucz Gemini jest na serwerze ✓"
+        : "⚠ Worker nie ma klucza Gemini — rozmowa nie ruszy. Dodaj sekret GEMINI_API_KEY albo wybierz inny model.";
     }
   } catch (e) {
     // Brak odpowiedzi nie jest powodem do straszenia — zostawiamy stan nieznany
