@@ -3,7 +3,7 @@
    Podnieś WERSJA po każdej zmianie plików, żeby telefon pobrał nowe.
    ============================================================ */
 
-var WERSJA = "angielski-ai-v19";
+var WERSJA = "angielski-ai-v20";
 
 var SZKIELET = [
   "./",
@@ -36,7 +36,10 @@ var SZKIELET = [
 self.addEventListener("install", function (zdarzenie) {
   zdarzenie.waitUntil(
     caches.open(WERSJA).then(function (magazyn) {
-      return magazyn.addAll(SZKIELET);
+      // cache: "reload" — z pominięciem pamięci przeglądarki. GitHub Pages pozwala
+      // trzymać pliki do 10 minut, więc bez tego nowa wersja potrafiła
+      // zainstalować się ze STARYMI plikami i poprawka nie docierała do telefonu.
+      return magazyn.addAll(SZKIELET.map(function (u) { return new Request(u, { cache: "reload" }); }));
     }).then(function () {
       return self.skipWaiting();
     })

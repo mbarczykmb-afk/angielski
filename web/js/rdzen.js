@@ -151,6 +151,11 @@ var NAZWY_WIDOKOW = {
 };
 
 function pokazWidok(nazwa) {
+  // Czeka nowa wersja aplikacji, a uczeń właśnie wyszedł z rozmowy — to dobry moment
+  if (App.nowaWersja && App.widok === "rozmowa" && nazwa !== "rozmowa") {
+    location.reload();
+    return;
+  }
   App.widok = nazwa;
 
   Object.keys(NAZWY_WIDOKOW).forEach(function (w) {

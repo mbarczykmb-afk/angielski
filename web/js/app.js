@@ -86,7 +86,19 @@ async function start() {
   // Service worker daje instalację na ekranie głównym i działanie bez sieci
   if ("serviceWorker" in navigator) {
     try {
-      await navigator.serviceWorker.register("./sw.js");
+      // Gdy przy starcie strona nie ma jeszcze service workera, to pierwsza
+      // instalacja — nie przeładowujemy. Każde późniejsze przejęcie strony
+      // przez nowego workera oznacza nową wersję aplikacji.
+      var byl = !!navigator.serviceWorker.controller;
+      navigator.serviceWorker.addEventListener("controllerchange", function () {
+        if (byl) nowaWersjaGotowa();
+      });
+      var rejestracja = await navigator.serviceWorker.register("./sw.js");
+      // Telefon trzyma aplikację otwartą godzinami — sprawdzamy aktualizacje
+      // przy każdym powrocie do niej, a nie tylko przy pełnym starcie
+      document.addEventListener("visibilitychange", function () {
+        if (!document.hidden) rejestracja.update().catch(function () {});
+      });
     } catch (e) {
       console.warn("Service worker nie wystartował:", e);
     }
@@ -111,3 +123,14 @@ async function start() {
 }
 
 window.addEventListener("load", start);
+
+/**
+ * Nowa wersja aplikacji już jest w telefonie — przeładowujemy stronę, żeby
+ * zaczęła jej używać. W trakcie rozmowy nie przerywamy: przeładowanie czeka,
+ * aż uczeń z niej wyjdzie.
+ */
+function nowaWersjaGotowa() {
+  if (App.nowaWersja) return;
+  App.nowaWersja = true;
+  if (App.widok !== "rozmowa") location.reload();
+}

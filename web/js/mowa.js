@@ -112,6 +112,19 @@ var Mowa = {
     function slowa(t) {
       return t.toLowerCase().replace(/[^a-z0-9' ]+/g, " ").trim().split(/\s+/).filter(Boolean);
     }
+    // Tryb narastający włączamy też sami, gdy widać jego ślad: kolejny wynik
+    // powtarza CAŁY poprzedni i coś dodaje ("I would" -> "I would like").
+    // Na zwykłych wynikach z komputera to się nie zdarza.
+    if (!narastajaco) {
+      var poprz = null;
+      for (var n = 0; n < wyniki.length && !narastajaco; n++) {
+        if (!wyniki[n] || !wyniki[n][0]) continue;
+        var sl = slowa(String(wyniki[n][0].transcript || ""));
+        if (!sl.length) continue;
+        if (poprz && sl.length > poprz.length && poprz.every(function (x, j) { return sl[j] === x; })) narastajaco = true;
+        poprz = sl;
+      }
+    }
     // Ile pierwszych słów mają wspólnych
     function wspolnyPoczatek(a, b) {
       var n = 0;

@@ -114,6 +114,15 @@ sprawdz("android: interpunkcja i wielkość liter nie przeszkadzają",
   zlozZapis(wyniki(["Hello.", true], ["hello, how are you", true]), true),
   { gotowe: "hello, how are you", czastkowe: "" });
 
+sprawdz("bez rozpoznanego Androida: narastanie wykryte samo",
+  zlozZapis(wyniki(["I", true], ["I would", true], ["I would like", true], ["I would like to try", true],
+    ["I would like to try everything", true], ["I would like to try everything works well", true])),
+  { gotowe: "I would like to try everything works well", czastkowe: "" });
+
+sprawdz("bez rozpoznanego Androida: zwykłe kolejne zdania bez zmian",
+  zlozZapis(wyniki(["I was tired", true], ["so I went home", true])),
+  { gotowe: "I was tired so I went home", czastkowe: "" });
+
 sprawdz("komputer: bez trybu narastającego nic się nie zmienia",
   zlozZapis(wyniki(["very", true], ["very", true], ["good", true]), false),
   { gotowe: "very very good", czastkowe: "" });
