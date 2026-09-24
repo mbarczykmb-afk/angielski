@@ -61,6 +61,9 @@ function rysujUstawienia() {
     '<option value="opus"' + (ust.modelRozmowy === "opus" ? " selected" : "") + ">Najdokładniejszy — Opus 5 (Anthropic)</option>" +
     "</select>" +
     '<p class="mini" style="margin-top:8px" id="opis-modelu"></p>' +
+    // Jednym dotknięciem widać, co naprawdę odpowiada Google — zamiast zgadywać z błędu w rozmowie
+    '<button class="btn drugi" id="btn-test-gemini" type="button" style="margin-top:8px">Sprawdź Gemini</button>' +
+    '<p class="mini" id="wynik-gemini" style="white-space:pre-wrap"></p>' +
     '<p class="mini" style="margin-top:6px">Dotyczy tylko tur rozmowy. Ocena poziomu, plan i podsumowania lekcji zawsze idą przez Opus 5.</p></div>' +
 
     /* --- Kopie zapasowe --- */
@@ -175,6 +178,27 @@ function statusMowy() {
 }
 
 function podepnijUstawienia() {
+  var przyciskGemini = document.getElementById("btn-test-gemini");
+  if (przyciskGemini) przyciskGemini.onclick = async function () {
+    var el = document.getElementById("wynik-gemini");
+    przyciskGemini.disabled = true;
+    el.textContent = "Sprawdzam… (do kilkunastu sekund)";
+    try {
+      var w = await Api.wywolaj("/api/gemini/test", { metoda: "POST", dane: {} });
+      var przebieg = (w.proby || []).map(function (p) {
+        return (p.ok ? "✓ " : "✗ ") + p.model + (p.ok ? "" : " — " + (p.status ? p.status + ": " : "") + (p.komunikat || ""));
+      }).join("\n");
+      el.textContent = (w.ok
+        ? "Gemini działa (model " + w.model + ")."
+        : "Gemini nie działa: " + w.blad + "\nRozmowa i tak się nie urwie — tury obsłuży wtedy Claude.") +
+        (przebieg ? "\n\n" + przebieg : "");
+    } catch (e) {
+      el.textContent = "Nie udało się sprawdzić: " + e.message +
+        (/Nieznana trasa/.test(e.message) ? "\nSerwer ma starą wersję — uruchom WDROZ-BACKEND.bat." : "");
+    }
+    przyciskGemini.disabled = false;
+  };
+
   var kopiuj = document.getElementById("btn-kopiuj-diag");
   if (kopiuj) kopiuj.onclick = function () {
     var tekst = document.getElementById("diag-mikrofon").textContent;

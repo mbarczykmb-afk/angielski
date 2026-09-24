@@ -37,7 +37,14 @@ export function czystyKlucz(wartosc) {
  */
 export async function wywolajAI(env, wiadomosci, opcje = {}) {
   if (opcje.dostawca === DOSTAWCA_GEMINI) {
-    return wywolajGemini(env, wiadomosci, opcje);
+    try {
+      return await wywolajGemini(env, wiadomosci, opcje);
+    } catch (e) {
+      // Rozmowa nie może stanąć przez Google. Tę turę obsługuje Claude Haiku,
+      // a co dokładnie się stało, pokaże przycisk "Sprawdź Gemini" w Ustawieniach.
+      console.warn("Gemini zawiodło, tura idzie przez Claude:", e.message);
+      return wywolajClaude(env, wiadomosci, { ...opcje, dostawca: undefined, model: MODEL_ROZMOWA, effort: undefined });
+    }
   }
   return wywolajClaude(env, wiadomosci, opcje);
 }

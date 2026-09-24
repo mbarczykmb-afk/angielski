@@ -28,7 +28,7 @@ GOOGLE_CLIENT_ID = ""
 # Model Gemini używany do tur rozmowy, gdy wybierzesz go w Ustawieniach.
 # Google zmienia nazwy modeli częściej niż wychodzą wersje tej aplikacji —
 # jeśli zobaczysz błąd "Gemini nie zna modelu", wpisz tutaj aktualną nazwę.
-GEMINI_MODEL = "gemini-3.7-flash"
+GEMINI_MODEL = "gemini-flash-latest"
 
 # Sekrety (NIE trzymamy ich w tym pliku):
 #   npx wrangler secret put ANTHROPIC_API_KEY   — klucz z console.anthropic.com

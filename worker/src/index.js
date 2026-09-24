@@ -39,10 +39,11 @@ import {
   porzucMature,
 } from "./matura.js";
 import { diagnostyka } from "./ai.js";
+import { testGemini } from "./gemini.js";
 
 // Znacznik wersji kodu — widoczny w /api/health.
 // Pozwala sprawdzic golym okiem, ktora wersja naprawde dziala na serwerze.
-const WERSJA_KODU = "2026-09-24-nova-postac";
+const WERSJA_KODU = "2026-09-24-gemini-zapas";
 import {
   rozpocznijPolaczenie,
   obsluzPowrot,
@@ -183,6 +184,10 @@ async function trasuj(request, env, ctx) {
 
   if (sciezka === "/api/czat" && metoda === "POST") {
     return json(await czat(env, uzytkownik, body), env);
+  }
+
+  if (sciezka === "/api/gemini/test" && metoda === "POST") {
+    return json(await testGemini(env), env);
   }
 
   if (sciezka === "/api/czat/pomoc" && metoda === "POST") {
