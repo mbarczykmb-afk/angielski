@@ -251,7 +251,8 @@ export async function pobierzLekcje(env, uzytkownik, dzien) {
     "Przygotuj:\n" +
     "- 8 słówek lub zwrotów kluczowych (angielski, polski, krótkie zdanie przykładowe po angielsku),\n" +
     "- 3 zwroty do aktywnego użycia w rozmowie,\n" +
-    "- scenariusz roli dla rozmówcy AI: kim jest i gdzie jesteście, po angielsku,\n" +
+    "- scenariusz roli dla rozmówcy AI: kim jest i gdzie jesteście, po angielsku. Rozmówca jest " +
+    "KOBIETĄ (uczeń widzi na ekranie kobiecą twarz lektorki Novy) — jeśli ma imię, to żeńskie,\n" +
     "- pierwszą kwestię rozmówcy po angielsku: 1-2 naturalne zdania otwierające rozmowę, " +
     "zakończone pytaniem, żeby uczeń od razu musiał się odezwać,\n" +
     '- "zadanieUcznia": jedno zdanie PO ANGIELSKU mówiące, co uczeń ma dziś osiągnąć w rozmowie ' +
@@ -323,6 +324,10 @@ export async function czat(env, uzytkownik, dane) {
     '"Tell me about..." albo "What would you do?". Bez tego rozmowa się urywa, ale samo ' +
     "pytanie w kółko brzmi sztucznie — zmieniaj formę.\n" +
     "4. Nie wykładaj gramatyki w rozmowie — zostań w roli.\n" +
+    "Uczeń widzi na ekranie Twoją twarz: porcelanowego androida-kobietę o imieniu Nova. Grasz " +
+    "zawsze kobietę — jeśli scenariusz podaje męskie imię, użyj żeńskiego. Gdy uczeń zapyta, kim " +
+    "jesteś albo czemu wyglądasz jak robot, odpowiedz krótko, że jesteś Nova, lektorka AI, która " +
+    "teraz gra tę rolę, i wróć do rozmowy.\n" +
     "5. Jeśli uczeń nie zrozumiał albo prosi o powtórzenie, powiedz to samo prościej i wolniej " +
     "innymi słowami. Nie dodawaj nowego wątku.\n" +
     "6. Uczeń mówi do mikrofonu, więc dostajesz zapis rozpoznanej mowy — bez interpunkcji " +

@@ -81,5 +81,42 @@ sprawdz("prawdziwe powtórzenie zostaje nietknięte",
   zlozZapis(wyniki(["very", true], ["very", true], ["good", true])),
   { gotowe: "very very good", czastkowe: "" });
 
+// --- Android: każda kolejna wersja zdania przychodzi jako osobny wynik ---
+// Zgłoszenie z telefonu: "hi hi hi hi hi hi hi hi I'm hi I'm Nico" oraz
+// "is is something is something strange ..." zamiast jednego zdania.
+
+sprawdz("android: narastające wersje zdania dają jedno zdanie",
+  zlozZapis(wyniki(["is", true], ["is something", true], ["is something strange", true],
+    ["is something strange you said", true]), true),
+  { gotowe: "is something strange you said", czastkowe: "" });
+
+sprawdz("android: powtórzone hi i narastanie do przedstawienia się",
+  zlozZapis(wyniki(["hi", true], ["hi", true], ["hi", true], ["hi", true], ["hi I'm", true], ["hi I'm Nico", true]), true),
+  { gotowe: "hi I'm Nico", czastkowe: "" });
+
+sprawdz("android: poprawione ostatnie słowo zastępuje wersję",
+  zlozZapis(wyniki(["you are Daniel", true], ["you are Danielle but", true]), true),
+  { gotowe: "you are Danielle but", czastkowe: "" });
+
+sprawdz("android: nowe zdanie po pauzie dokleja się",
+  zlozZapis(wyniki(["hi I'm Nico", true], ["what is your name", true]), true),
+  { gotowe: "hi I'm Nico what is your name", czastkowe: "" });
+
+sprawdz("android: starsza krótsza wersja po dłuższej jest pomijana",
+  zlozZapis(wyniki(["I like green tea", true], ["I like", true]), true),
+  { gotowe: "I like green tea", czastkowe: "" });
+
+sprawdz("android: częściowa dłuższa wersja zastępuje zamkniętą",
+  zlozZapis(wyniki(["I was", true], ["I was very tired", false]), true),
+  { gotowe: "", czastkowe: "I was very tired" });
+
+sprawdz("android: interpunkcja i wielkość liter nie przeszkadzają",
+  zlozZapis(wyniki(["Hello.", true], ["hello, how are you", true]), true),
+  { gotowe: "hello, how are you", czastkowe: "" });
+
+sprawdz("komputer: bez trybu narastającego nic się nie zmienia",
+  zlozZapis(wyniki(["very", true], ["very", true], ["good", true]), false),
+  { gotowe: "very very good", czastkowe: "" });
+
 console.log(bledy ? `\n${bledy} błędów` : "\nWszystkie testy przeszły");
 process.exit(bledy ? 1 : 0);

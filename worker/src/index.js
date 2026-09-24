@@ -42,7 +42,7 @@ import { diagnostyka } from "./ai.js";
 
 // Znacznik wersji kodu — widoczny w /api/health.
 // Pozwala sprawdzic golym okiem, ktora wersja naprawde dziala na serwerze.
-const WERSJA_KODU = "2026-09-24-matura-interfejs";
+const WERSJA_KODU = "2026-09-24-nova-postac";
 import {
   rozpocznijPolaczenie,
   obsluzPowrot,

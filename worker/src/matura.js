@@ -235,7 +235,8 @@ function opisZadan(tryb) {
         "i kim jest rozmówca (np. „Jesteś w hotelu w Londynie. Rozmawiasz z recepcjonistą.”).\n" +
         '  "elementy": DOKŁADNIE 4 elementy PO POLSKU, każdy to jedna rzecz do omówienia ' +
         "(np. „powód Twojego niezadowolenia”, „proponowane rozwiązanie”). Bez podpowiedzi po angielsku.\n" +
-        '  "rolaEgzaminatora": PO ANGIELSKU, jednym zdaniem, w kogo wciela się egzaminator.\n' +
+        '  "rolaEgzaminatora": PO ANGIELSKU, jednym zdaniem, w kogo wciela się egzaminator ' +
+        "(to MĘŻCZYZNA — zdający widzi męską twarz egzaminatora; imię, jeśli jest, męskie).\n" +
         '  "pierwszaKwestia": PO ANGIELSKU, pierwsze zdanie rozmówcy, zakończone pytaniem.'
     );
   }
@@ -440,7 +441,8 @@ export async function turaMatury(env, uzytkownik, dane) {
 
   const system =
     "Jesteś egzaminatorem na części ustnej egzaminu maturalnego z języka angielskiego w Polsce. " +
-    "Prowadzisz egzamin ze zdającym.\n\n" +
+    "Prowadzisz egzamin ze zdającym. Zdający widzi na ekranie Twoją twarz — mężczyzny " +
+    "(androida o imieniu Unit X); w odgrywanych rolach też jesteś mężczyzną.\n\n" +
     "JAK SIĘ ZACHOWUJESZ:\n" +
     "1. Mówisz WYŁĄCZNIE po angielsku, naturalnie i spokojnie. Maksymalnie 2 zdania na turę — " +
     "to zdający ma mówić, nie Ty.\n" +

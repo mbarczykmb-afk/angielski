@@ -99,10 +99,25 @@ var Mowa = {
    *
    * Składanie od zera jest odporne na powtórzone zdarzenia: ten sam wynik
    * policzony dwa razy daje ten sam tekst.
+   *
+   * narastajaco — Chrome na Androidzie w trybie ciągłym przysyła każdą
+   * kolejną wersję zdania jako OSOBNY wynik: "is", "is something",
+   * "is something strange"... Sklejone dawały "is is something is something
+   * strange". W tym trybie wynik, który zaczyna się tak jak poprzedni,
+   * zastępuje go, a krótsza, starsza wersja jest pomijana.
    */
-  zlozZapis: function (wyniki) {
-    var gotowe = "";
-    var czastkowe = "";
+  zlozZapis: function (wyniki, narastajaco) {
+    var kawalki = [];
+
+    function slowa(t) {
+      return t.toLowerCase().replace(/[^a-z0-9' ]+/g, " ").trim().split(/\s+/).filter(Boolean);
+    }
+    // Ile pierwszych słów mają wspólnych
+    function wspolnyPoczatek(a, b) {
+      var n = 0;
+      while (n < a.length && n < b.length && a[n] === b[n]) n++;
+      return n;
+    }
 
     for (var i = 0; i < wyniki.length; i++) {
       var wynik = wyniki[i];
@@ -111,10 +126,27 @@ var Mowa = {
       var fragment = String(wynik[0].transcript || "").trim();
       if (!fragment) continue;
 
-      if (wynik.isFinal) gotowe += (gotowe ? " " : "") + fragment;
-      else czastkowe += (czastkowe ? " " : "") + fragment;
+      var ost = kawalki[kawalki.length - 1];
+      if (narastajaco && ost) {
+        var a = slowa(ost.tekst), b = slowa(fragment);
+        var w = wspolnyPoczatek(a, b);
+        // Nowa wersja tego samego zdania (czasem z poprawionym słowem na końcu)
+        if (b.length >= a.length && w >= Math.max(1, Math.ceil(a.length * 0.6))) {
+          ost.tekst = fragment;
+          ost.koncowy = !!wynik.isFinal;
+          continue;
+        }
+        // Starsza, krótsza wersja zdania, które już mamy
+        if (b.length < a.length && w >= Math.max(1, Math.ceil(b.length * 0.6))) continue;
+      }
+      kawalki.push({ tekst: fragment, koncowy: !!wynik.isFinal });
     }
 
+    var gotowe = "", czastkowe = "";
+    kawalki.forEach(function (k) {
+      if (k.koncowy) gotowe += (gotowe ? " " : "") + k.tekst;
+      else czastkowe += (czastkowe ? " " : "") + k.tekst;
+    });
     return { gotowe: gotowe, czastkowe: czastkowe };
   },
 
@@ -152,6 +184,9 @@ var Mowa = {
 
     var self = this;
     var finalne = "";
+    var ostatnie = "";
+    // Android przysyła kolejne wersje tego samego zdania jako osobne wyniki
+    var narastajaco = /Android/i.test(navigator.userAgent || "");
     var licznik = null;
     var cokolwiekPowiedziano = false;
 
@@ -171,11 +206,12 @@ var Mowa = {
     };
 
     r.onresult = function (zdarzenie) {
-      var zapis = Mowa.zlozZapis(zdarzenie.results);
+      var zapis = Mowa.zlozZapis(zdarzenie.results, narastajaco);
 
       finalne = zapis.gotowe;
+      ostatnie = (zapis.gotowe + " " + zapis.czastkowe).trim();
       cokolwiekPowiedziano = true;
-      onTekst((zapis.gotowe + " " + zapis.czastkowe).trim(), false);
+      onTekst(ostatnie, false);
 
       // Każde kolejne słowo odsuwa moment zakończenia — mów tyle, ile chcesz
       odlozKoniec(pauza);
@@ -198,7 +234,10 @@ var Mowa = {
       if (przycisk) przycisk.classList.remove("slucha");
       self.rozpoznawanie = null;
 
-      if (onKoniec) onKoniec(cokolwiekPowiedziano ? finalne.trim() : "");
+      // Gdy nowsza, jeszcze niezamknięta wersja zdania zastąpiła zamkniętą,
+      // bierzemy pełniejszy zapis — inaczej zgubilibyśmy końcówkę wypowiedzi
+      var wynikKoncowy = ostatnie.length > finalne.trim().length ? ostatnie : finalne.trim();
+      if (onKoniec) onKoniec(cokolwiekPowiedziano ? wynikKoncowy : "");
     };
 
     this.rozpoznawanie = r;
