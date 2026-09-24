@@ -91,6 +91,12 @@ function rysujUstawienia() {
     // Wtedy nowy ekran puka do starego serwera i sypie "Nieznana trasa" —
     // ta linijka pozwala to zobaczyć od razu, zamiast zgadywać z błędu.
     '<p class="mini" id="wersje-uslugi">Sprawdzam wersje...</p>' +
+    // Surowe dane z ostatniego nagrania — do wklejenia, gdy zapis mowy wariuje
+    '<details class="mini" style="margin-top:8px"><summary>Diagnostyka mikrofonu</summary>' +
+    '<p class="mini">Co przeglądarka przysłała przy ostatnim nagraniu. Skopiuj i wklej, jeśli zapis Twoich słów wygląda dziwnie.</p>' +
+    '<pre id="diag-mikrofon" style="white-space:pre-wrap;word-break:break-word;max-height:220px;overflow:auto;font-size:11px">' +
+    esc(Mowa.diagnostyka ? JSON.stringify(Mowa.diagnostyka) : "Jeszcze nic nie nagrano (wersja zapisu " + Mowa.WERSJA_ZAPISU + ").") + "</pre>" +
+    '<button class="btn drugi" id="btn-kopiuj-diag" type="button">Kopiuj</button></details>' +
     '<p class="mini"><a href="#" id="link-zmien-adres2" style="color:var(--przygasly)">Zmień adres serwera</a></p></div>';
 
   podepnijUstawienia();
@@ -160,6 +166,15 @@ function statusMowy() {
 }
 
 function podepnijUstawienia() {
+  var kopiuj = document.getElementById("btn-kopiuj-diag");
+  if (kopiuj) kopiuj.onclick = function () {
+    var tekst = document.getElementById("diag-mikrofon").textContent;
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(tekst).then(function () { toast("Skopiowane — wklej w czacie."); },
+        function () { toast("Nie udało się skopiować — zaznacz tekst ręcznie.", false); });
+    }
+  };
+
   /* --- Zapis ustawień --- */
 
   async function zapisz() {

@@ -18,6 +18,12 @@ const zlozZapis = new Function(
   "return { " + zrodlo.slice(poczatek, koniec).trim().replace(/,$/, "") + " }.zlozZapis;"
 )();
 
+const pZ = zrodlo.indexOf("  zwinNarastanie: function");
+const kZ = zrodlo.indexOf("  /**", pZ + 10);
+const zwin = new Function(
+  "return { " + zrodlo.slice(pZ, kZ).trim().replace(/,$/, "") + " }.zwinNarastanie;"
+)();
+
 let bledy = 0;
 function sprawdz(nazwa, wynik, oczekiwane) {
   const a = JSON.stringify(wynik), b = JSON.stringify(oczekiwane);
@@ -126,6 +132,20 @@ sprawdz("bez rozpoznanego Androida: zwykłe kolejne zdania bez zmian",
 sprawdz("komputer: bez trybu narastającego nic się nie zmienia",
   zlozZapis(wyniki(["very", true], ["very", true], ["good", true]), false),
   { gotowe: "very very good", czastkowe: "" });
+
+// --- Zwijanie gotowego tekstu (druga linia obrony) ---
+
+sprawdz("zwijanie: zgłoszenie z telefonu",
+  zwin("I I would I would like I would like to I would like to try I would like to try I would like to try everything I would like to try everything I would like to try everything I would like to try everything works I would like to try everything works well"),
+  "I would like to try everything works well");
+sprawdz("zwijanie: hi hi hi ... I'm Nico",
+  zwin("hi hi hi hi hi hi hi hi I'm hi I'm Nico"), "hi I'm Nico");
+sprawdz("zwijanie: dwa zdania, oba narastające",
+  zwin("hi hi I'm hi I'm Nico what what is what is your name"), "hi I'm Nico what is your name");
+sprawdz("zwijanie: prawdziwe powtórzenie zostaje", zwin("very very good"), "very very good");
+sprawdz("zwijanie: no no no zostaje", zwin("no no no"), "no no no");
+sprawdz("zwijanie: zwykłe zdanie bez zmian", zwin("I was tired so I went home"), "I was tired so I went home");
+sprawdz("zwijanie: pusty tekst", zwin(""), "");
 
 console.log(bledy ? `\n${bledy} błędów` : "\nWszystkie testy przeszły");
 process.exit(bledy ? 1 : 0);

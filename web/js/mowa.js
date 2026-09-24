@@ -87,6 +87,11 @@ var Mowa = {
 
   /* --- Mikrofon --- */
 
+  // Numer wersji składania zapisu — widać go w diagnostyce mikrofonu,
+  // więc od razu wiadomo, czy telefon ma już najnowszą poprawkę
+  WERSJA_ZAPISU: 3,
+  diagnostyka: null,
+
   /**
    * Składa zapis wypowiedzi z listy wyników rozpoznawania.
    *
@@ -164,6 +169,56 @@ var Mowa = {
   },
 
   /**
+   * Zwija gotowy tekst z narastających wersji zdania:
+   * "I I would I would like I would like to" -> "I would like to".
+   *
+   * Druga linia obrony, niezależna od tego, w jakim układzie przeglądarka
+   * przysłała wyniki. Szukamy ciągu co najmniej 3 odcinków, z których każdy
+   * zaczyna się całym poprzednim — to ślad narastania, a nie zwykłe
+   * powtórzenie słowa ("very very good" zostaje nietknięte).
+   */
+  zwinNarastanie: function (tekst) {
+    var W = String(tekst || "").trim().split(/\s+/).filter(Boolean);
+    var n = W.length;
+    function rowne(a, b) {
+      return a.toLowerCase().replace(/[^a-z0-9']/g, "") === b.toLowerCase().replace(/[^a-z0-9']/g, "");
+    }
+    // Czy słowa od pozycji b powtarzają dlug słów od pozycji a
+    function powtarza(a, b, dlug) {
+      if (b + dlug > n) return false;
+      for (var i = 0; i < dlug; i++) if (!rowne(W[a + i], W[b + i])) return false;
+      return true;
+    }
+    // Najkrótszy odcinek od q (nie krótszy niż min), po którym zaraz następuje jego powtórka
+    function odcinek(q, min) {
+      for (var L = min; q + 2 * L <= n; L++) if (powtarza(q, q + L, L)) return L;
+      return 0;
+    }
+
+    var wynik = [], p = 0;
+    while (p < n) {
+      var q = p, L = odcinek(p, 1), powtorki = 0, dlug = 0, pierwszy = L;
+      while (L) {
+        powtorki++;
+        dlug = L;
+        q += L;
+        L = odcinek(q, dlug);
+      }
+      // Zdanie musi urosnąć — samo "no no no" to zwykłe powtórzenie
+      if (powtorki >= 2 && dlug > pierwszy) {
+        // Ostatnia wersja zdania zaczyna się w q; znamy na pewno jej pierwsze
+        // dlug słów, resztę dopisze dalsza część pętli
+        wynik.push.apply(wynik, W.slice(q, q + dlug));
+        p = q + dlug;
+      } else {
+        wynik.push(W[p]);
+        p++;
+      }
+    }
+    return wynik.join(" ");
+  },
+
+  /**
    * Nasłuch jednej wypowiedzi.
    * onTekst(tekst, koncowy) — wołane też dla wyników częściowych, żeby
    * uczeń widział na bieżąco, co zostało rozpoznane.
@@ -200,6 +255,12 @@ var Mowa = {
     var ostatnie = "";
     // Android przysyła kolejne wersje tego samego zdania jako osobne wyniki
     var narastajaco = /Android/i.test(navigator.userAgent || "");
+    // Surowy zapis tego, co przysłała przeglądarka — widać go w Więcej,
+    // gdy trzeba sprawdzić, skąd w tekście wzięły się dziwne powtórzenia
+    var diag = Mowa.diagnostyka = {
+      wersjaZapisu: Mowa.WERSJA_ZAPISU, kiedy: new Date().toISOString(),
+      przegladarka: navigator.userAgent, zdarzenia: [], wynik: null,
+    };
     var licznik = null;
     var cokolwiekPowiedziano = false;
 
@@ -221,8 +282,17 @@ var Mowa = {
     r.onresult = function (zdarzenie) {
       var zapis = Mowa.zlozZapis(zdarzenie.results, narastajaco);
 
-      finalne = zapis.gotowe;
-      ostatnie = (zapis.gotowe + " " + zapis.czastkowe).trim();
+      diag.zdarzenia.push({
+        od: zdarzenie.resultIndex,
+        wyniki: Array.prototype.slice.call(zdarzenie.results, -20).map(function (w) {
+          return [String((w[0] && w[0].transcript) || "").slice(0, 90), w.isFinal ? 1 : 0];
+        }),
+      });
+      if (diag.zdarzenia.length > 6) diag.zdarzenia.shift();
+
+      // Druga linia obrony: zwijamy narastające wersje także w gotowym tekście
+      finalne = Mowa.zwinNarastanie(zapis.gotowe);
+      ostatnie = Mowa.zwinNarastanie((zapis.gotowe + " " + zapis.czastkowe).trim());
       cokolwiekPowiedziano = true;
       onTekst(ostatnie, false);
 
@@ -250,6 +320,7 @@ var Mowa = {
       // Gdy nowsza, jeszcze niezamknięta wersja zdania zastąpiła zamkniętą,
       // bierzemy pełniejszy zapis — inaczej zgubilibyśmy końcówkę wypowiedzi
       var wynikKoncowy = ostatnie.length > finalne.trim().length ? ostatnie : finalne.trim();
+      diag.wynik = wynikKoncowy;
       if (onKoniec) onKoniec(cokolwiekPowiedziano ? wynikKoncowy : "");
     };
 
