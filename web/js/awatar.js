@@ -108,6 +108,7 @@ var Awatar = {
       this._opis(egzaminator, true);
     this.status = document.getElementById("awatar-status");
     this.ustawStan(this.stan || "czeka");
+    this._powiekszanie(panel);
 
     silnik.utworz(panel.querySelector(".awatar-twarz"), egzaminator ? "egzaminator" : "lektor")
       .then(function (robot) {
@@ -123,6 +124,19 @@ var Awatar = {
         panel.dataset.wariant = (egzaminator ? "egzaminator" : "lektor") + "-twarz";
         self._pokazTwarz(panel, egzaminator);
       });
+  },
+
+  // Dotknięcie twarzy powiększa ją albo zmniejsza; wybór pamięta ta przeglądarka
+  _powiekszanie: function (panel) {
+    var duzy = false;
+    try { duzy = localStorage.getItem("awatarDuzy") === "1"; } catch (e) { /* tryb prywatny */ }
+    panel.classList.toggle("duzy", duzy);
+    var twarz = panel.querySelector(".awatar-twarz");
+    twarz.title = "Dotknij, żeby powiększyć albo zmniejszyć";
+    twarz.addEventListener("click", function () {
+      var teraz = panel.classList.toggle("duzy");
+      try { localStorage.setItem("awatarDuzy", teraz ? "1" : "0"); } catch (e) { /* bez zapamiętania */ }
+    });
   },
 
   _odmontuj: function () {

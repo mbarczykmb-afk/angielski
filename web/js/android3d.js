@@ -48,15 +48,18 @@ var Android3D = {
 var TWARZE_ANDROIDA = {
   // Nova: jasna, lśniąca porcelana, turkusowe oczy
   nova: {
-    szerTwarzy: 0.97, zwezenie: 0.12, czaszkaX: 7.4,
+    szerTwarzy: 0.97, zwezenie: 0.16, czaszkaX: 7.4,
+    // Kobiece rysy: mniejszy nos, pełniejsze usta i policzki, większe oczy
+    rzezba: { nos: 0.7, usta: 1.4, policzki: 0.25 }, okoX: 1.1, okoY: 1.3,
     skora: 0xf4f6f8, oczy: 0x3fe0ff, usmiechBazowy: 0.15,
-    wargi: "#e2e5e9", zebra: "#c3c9d1", ciemny: "#1b1f25",
+    wargi: "#ecdfe2", zebraWarg: "#d6c6ca", konturWarg: "#c9b3b9", zebra: "#8e98a4", brew: "#c4cbd3", ciemny: "#1b1f25",
   },
   // Unit X: grafitowa porcelana, szersza twarz, chłodne niebieskie oczy
   unitx: {
     szerTwarzy: 1.04, zwezenie: 0.03, czaszkaX: 7.9,
+    rzezba: null, okoX: 1, okoY: 1.05,
     skora: 0xa9b1bc, oczy: 0x6cb4ff, usmiechBazowy: 0,
-    wargi: "#9aa3ae", zebra: "#7e8893", ciemny: "#171a1f",
+    wargi: "#9aa3ae", zebraWarg: "#7e8893", konturWarg: "#7e8893", zebra: "#5d6671", brew: "#8b949f", ciemny: "#171a1f",
   },
 };
 
@@ -102,6 +105,24 @@ function najblizszyNaObwodzie(x, y, w) {
 // Szerokość twarzy na danej wysokości: u Novy żuchwa węższa niż w modelu
 function skalaX(P, y) {
   return P.szerTwarzy * (1 - P.zwezenie * gladko(-1.5, -8.5, y));
+}
+
+// Wysokość twarzy postaci: model MediaPipe z poprawkami rysów. Szczegół
+// (to, co odstaje od gładkiej bryły) skalujemy osobno dla nosa i ust.
+function wysTwarzy(P, T, x, y) {
+  var h = T.wys(x, y);
+  if (h === null || !P.rzezba) return h;
+  var R = P.rzezba, g = T.wysGlad(x, y);
+  var f = 1 + (R.nos - 1) * gaus(x, y, 0, -0.4, 1.2, 2.3) + (R.usta - 1) * gaus(x, y, 0, -4.4, 2.3, 0.95);
+  return g + (h - g) * f + R.policzki * gausPara(x, y, 2.9, -1.3, 1.3, 1.1);
+}
+
+// Obrys oka powiększony wokół środka (u Novy oczy są większe niż w modelu)
+function obrysOka(P, obrys) {
+  var cx = 0, cy = 0;
+  obrys.forEach(function (p) { cx += p[0]; cy += p[1]; });
+  cx /= obrys.length; cy /= obrys.length;
+  return obrys.map(function (p) { return [cx + (p[0] - cx) * P.okoX, cy + (p[1] - cy) * P.okoY, p[2]]; });
 }
 
 var MINY_ANDROIDA = ["szczeka", "usmiech", "smutek", "dziob", "brwi", "brwiWew", "brewP"];
@@ -186,6 +207,7 @@ function przygotujTwarzMP() {
   }
 
   var Hg = rozmyj(H, 2.2);
+  var Hb = rozmyj(H, 15);
   var Mg = rozmyj(M, 7);
 
   function probka(tab, x, y) {
@@ -207,6 +229,8 @@ function przygotujTwarzMP() {
   przygotujTwarzMP._gotowe = {
     // Wysokość twarzy w punkcie (x, y) albo null poza siatką
     wys: function (x, y) { return probka(Hg, x, y); },
+    // Ta sama twarz mocno wygładzona — sama bryła, bez nosa i ust
+    wysGlad: function (x, y) { return probka(Hb, x, y); },
     // 1 głęboko w twarzy, 0 przy brzegu maski i poza nią
     waga: function (x, y) { var m = probka(Mg, x, y); return m === null ? 0 : gladko(0.55, 0.97, m); },
     wMasce: function (x, y) { var m = probka(M, x, y); return m !== null && m > 0.5; },
@@ -254,7 +278,7 @@ function punktGlowy(P, T, dx, dy, dz) {
     var px = O[0] + t * dx, py = O[1] + t * dy, pz = O[2] + t * dz;
     var sx = skalaX(P, py);
     if (!T.wMasce(px / sx, py)) return 1;
-    return pz - T.wys(px / sx, py);
+    return pz - wysTwarzy(P, T, px / sx, py);
   }
   var t0 = 2, trafienie = -1;
   if (f(t0) > 0) return { r: rc, w: 0 };
@@ -290,7 +314,7 @@ function mina(P, T, nazwa, p, wT, podUstami) {
     var waga = (wUstach * podUstami + (1 - wUstach) * miekko) * gladko(-5, -1.5, z) * gladko(-1, 0.5, ponizej + 0.8);
     // Kąciki zostają złączone — usta otwierają się w migdał
     var kacik = gladko(0.25, xk, Math.abs(sx)) * (1 - gladko(0.4, 2.0, ponizej));
-    var kat = 0.16 * waga * (1 - kacik * 0.9);
+    var kat = 0.2 * waga * (1 - kacik * 0.9);
     var pyy = 0.3, pzz = -3.2;
     var yy = y - pyy, zz = z - pzz;
     var ny = pyy + yy * Math.cos(kat) - zz * Math.sin(kat);
@@ -342,7 +366,7 @@ function rysujTeksture(P, T, promienW) {
   }
   // Kierunek do punktu twarzy (x, y) z modelu
   function zTwarzy(x, y) {
-    var z = T.wys(x, y);
+    var z = wysTwarzy(P, T, x, y);
     return norm([x * skalaX(P, y) - O[0], y - O[1], (z === null ? 0 : z) - O[2]]);
   }
   // Kierunek z kątów: odchylenie w bok (w stronę +x) i wysokość, w stopniach
@@ -500,17 +524,23 @@ function rysujTeksture(P, T, promienW) {
   kropka(zTwarzy(-1.5, -7.2), 0.16);
   krazekSiatki(krazekOko, 0.85);
 
-  /* Brwi: żebrowane pasy zamiast malowanych włosków */
+  /* Brwi: cienkie, wygięte łuki z drobnym żebrowaniem — grube u nasady,
+     zwężające się ku skroni, jak na zdjęciach porcelanowych androidów */
   [T.brewP, T.brewL].forEach(function (brew) {
-    var kier = brew.map(function (p) { return zTwarzy(p[0], p[1]); });
+    // Dolna krawędź brwi z modelu (od nasady do skroni), lekko uniesiona w łuk
+    var luk = P.rzezba ? [0.05, 0.14, 0.2, 0.12, -0.05] : [0.05, 0.08, 0.08, 0.05, 0];
+    var dol = brew.slice(5).map(function (p, i) { return [p[0], p[1] + luk[i]]; });
+    var grubosc = P.rzezba ? [0.34, 0.32, 0.27, 0.19, 0.09] : [0.46, 0.46, 0.42, 0.36, 0.26];
+    var gora = dol.map(function (p, i) { return [p[0], p[1] + grubosc[i]]; });
+    var obrys = gora.concat(dol.slice().reverse());
     k.save();
-    wielokat(kier); k.fillStyle = "#eef0f3"; k.fill(); k.clip();
-    var gora = brew.slice(0, 5), dol = brew.slice(5).reverse();
-    for (var i = 0; i <= 40; i++) {
-      var t = i / 40 * 4, i0 = Math.min(3, Math.floor(t)), f = t - i0;
-      var g = [gora[i0][0] + (gora[i0 + 1][0] - gora[i0][0]) * f, gora[i0][1] + (gora[i0 + 1][1] - gora[i0][1]) * f];
-      var d = [dol[i0][0] + (dol[i0 + 1][0] - dol[i0][0]) * f, dol[i0][1] + (dol[i0 + 1][1] - dol[i0][1]) * f];
-      linia([zTwarzy(g[0], g[1] + 0.2), zTwarzy(d[0], d[1] - 0.2)], 2.2, P.zebra);
+    wielokat(obrys.map(function (p) { return zTwarzy(p[0], p[1]); }));
+    k.fillStyle = P.brew; k.fill(); k.clip();
+    for (var i = 0; i <= 44; i++) {
+      var t = i / 44 * 4, i0 = Math.min(3, Math.floor(t)), f = t - i0;
+      var x = gora[i0][0] + (gora[i0 + 1][0] - gora[i0][0]) * f;
+      var y = gora[i0][1] + (gora[i0 + 1][1] - gora[i0][1]) * f;
+      linia([zTwarzy(x, y + 0.1), zTwarzy(x + (x > 0 ? 0.08 : -0.08), y - 0.45)], 1.8, P.zebra);
     }
     k.restore();
   });
@@ -520,15 +550,21 @@ function rysujTeksture(P, T, promienW) {
     var kier = T.wargi.map(function (p) { return zTwarzy(p[0], p[1]); });
     k.save();
     wielokat(kier); k.fillStyle = P.wargi; k.fill(); k.clip();
-    for (var x = -2.6; x <= 2.6; x += 0.13) linia([zTwarzy(x, -3.1), zTwarzy(x, -5.6)], 1.6, P.zebra);
+    for (var x = -2.6; x <= 2.6; x += 0.13) linia([zTwarzy(x, -3.1), zTwarzy(x, -5.6)], 1.6, P.zebraWarg);
     k.restore();
+    // Wyraźny kontur warg
+    linia(kier.concat([kier[0]]), 2, P.konturWarg);
     linia(T.liniaUst.map(function (p) { return zTwarzy(p[0], p[1]); }), 2.5, "#5b636e");
   })();
 
   /* Oczy: ciemna linia rzęs na górnej powiece, jaśniejsza na dolnej */
-  [T.okoP, T.okoL].forEach(function (oko) {
+  [T.okoP, T.okoL].forEach(function (oko0) {
+    var oko = obrysOka(P, oko0);
     var dol = oko.slice(0, 9), gora = oko.slice(8).concat([oko[0]]);
-    linia(gora.map(function (p) { return zTwarzy(p[0], p[1] + 0.03); }), 5, "#2a3038");
+    linia(gora.map(function (p) { return zTwarzy(p[0], p[1] + 0.03); }), P.rzezba ? 7 : 5, "#1f242b");
+    // Kreska wyciągnięta w górę za zewnętrznym kącikiem
+    var kacik = oko[0], s = kacik[0] > 0 ? 1 : -1;
+    if (P.rzezba) linia([zTwarzy(kacik[0] - s * 0.3, kacik[1] + 0.12), zTwarzy(kacik[0] + s * 0.45, kacik[1] + 0.3)], 5, "#1f242b");
     linia(dol.map(function (p) { return zTwarzy(p[0], p[1] - 0.02); }), 2.5, "#8f98a3");
     // Załamanie powieki nad okiem
     linia(gora.slice(1, -1).map(function (p) { return zTwarzy(p[0] * 1.02, p[1] + 0.55); }), 2, "#b8c0c9");
@@ -590,7 +626,7 @@ function zbudujAndroida(THREE, RoomEnvironment, kontener, meski) {
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
   renderer.setSize(rozmiar, rozmiar);
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 0.95;
+  renderer.toneMappingExposure = 1.05;
   kontener.innerHTML = "";
   kontener.appendChild(renderer.domElement);
 
@@ -598,28 +634,31 @@ function zbudujAndroida(THREE, RoomEnvironment, kontener, meski) {
   var pmrem = new THREE.PMREMGenerator(renderer);
   var otoczenie = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
   scena.environment = otoczenie;
-  scena.environmentIntensity = 0.5;
+  scena.environmentIntensity = 0.85;
   pmrem.dispose();
 
   // Wymiary w centymetrach — kadr: cała głowa i kawałek szyi
   var kamera = new THREE.PerspectiveCamera(22, 1, 1, 400);
-  kamera.position.set(3, 4, 84);
-  kamera.lookAt(0.5, -1.8, 0);
+  // Kadr bliżej twarzy: w małym kółku nad rozmową liczą się oczy i usta
+  kamera.position.set(3, 3.5, 70);
+  kamera.lookAt(0.5, 0.2, 0);
 
-  var klucz = new THREE.DirectionalLight(0xffffff, 2.4);
+  // Miękkie, jasne światło jak w studiu — porcelana ma być biała, nie szara
+  scena.add(new THREE.HemisphereLight(0xffffff, 0x4a5568, 0.7));
+  var klucz = new THREE.DirectionalLight(0xffffff, 1.9);
   klucz.position.set(-3, 2.5, 3.5);
   scena.add(klucz);
-  var kontra = new THREE.DirectionalLight(new THREE.Color(P.oczy).lerp(new THREE.Color(0xffffff), 0.4), 2.2);
+  var kontra = new THREE.DirectionalLight(new THREE.Color(P.oczy).lerp(new THREE.Color(0xffffff), 0.5), 1.7);
   kontra.position.set(4, 1.5, -2.5);
   scena.add(kontra);
-  var wypelnienie = new THREE.DirectionalLight(0xdfe8ff, 0.6);
+  var wypelnienie = new THREE.DirectionalLight(0xdfe8ff, 0.9);
   wypelnienie.position.set(2, -1, 3);
   scena.add(wypelnienie);
 
   /* --- Głowa --- */
 
-  var okaP = T.okoP.map(function (p) { return [p[0] * sxy(p[1]), p[1]]; });
-  var okaL = T.okoL.map(function (p) { return [p[0] * sxy(p[1]), p[1]]; });
+  var okaP = obrysOka(P, T.okoP).map(function (p) { return [p[0] * sxy(p[1]), p[1]]; });
+  var okaL = obrysOka(P, T.okoL).map(function (p) { return [p[0] * sxy(p[1]), p[1]]; });
   function promienW(d) { return promienCzaszki(P, d[0], d[1], d[2]); }
 
   // Liczenie głowy trwa chwilę, więc wynik zostaje w pamięci: gdy panel
@@ -655,7 +694,7 @@ function zbudujAndroida(THREE, RoomEnvironment, kontener, meski) {
 
     // Przestawia punkt na powierzchnię twarzy w (x, y) i poprawia mu współrzędne tekstury
     function ustawNaTwarzy(j, x, y) {
-      var z = T.wys(x / sxy(y), y);
+      var z = wysTwarzy(P, T, x / sxy(y), y);
       baza[j * 3] = x; baza[j * 3 + 1] = y; baza[j * 3 + 2] = z;
       var ddx = x - O[0], ddy = y - O[1], ddz = z - O[2], l = Math.hypot(ddx, ddy, ddz);
       var phi = Math.atan2(-ddx / l, -ddz / l);
@@ -802,12 +841,12 @@ function zbudujAndroida(THREE, RoomEnvironment, kontener, meski) {
   var mBlask = new THREE.MeshBasicMaterial({ color: 0xffffff, toneMapped: false });
   var mPowieka = new THREE.MeshPhysicalMaterial({ color: P.skora, roughness: 0.3, clearcoat: 1, clearcoatRoughness: 0.1 });
 
-  var R = 1.22;
+  var R = 1.22 * P.okoX;
   var oczy = [okaP, okaL].map(function (obrys) {
     var sxo = 0, syo = 0;
     obrys.forEach(function (p) { sxo += p[0]; syo += p[1]; });
     sxo /= obrys.length; syo /= obrys.length;
-    var zPrzod = T.wys(sxo / sxy(syo), syo);
+    var zPrzod = wysTwarzy(P, T, sxo / sxy(syo), syo);
     var gniazdo = new THREE.Group();
     gniazdo.position.set(sxo, syo, zPrzod - R * 0.97);
     wnetrze.add(gniazdo);
@@ -929,6 +968,9 @@ function zbudujAndroida(THREE, RoomEnvironment, kontener, meski) {
     st.dt = Math.min(0.25, (czasMs - (st.ostatnia || czasMs - 33)) / 1000);
     st.ostatnia = czasMs;
     if (document.hidden || !kontener.isConnected || kontener.offsetParent === null) return;
+    // Panel można powiększyć dotknięciem — płótno rośnie razem z nim, żeby twarz była ostra
+    var szer = kontener.clientWidth;
+    if (szer && Math.abs(szer - rozmiar) > 1) { rozmiar = szer; renderer.setSize(rozmiar, rozmiar, false); }
 
     var t = (czasMs - st.start) / 1000;
     var stan = st.stan;

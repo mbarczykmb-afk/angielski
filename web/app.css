@@ -931,3 +931,7 @@ body.skupienie #toast { top: calc(160px + env(safe-area-inset-top)); }
   background: radial-gradient(circle at 50% 38%, rgba(108, 180, 255, .28), rgba(59, 130, 246, .07) 62%, rgba(13, 17, 23, 0) 72%);
 }
 .awatar-twarz.robot canvas { width: 100% !important; height: 100% !important; display: block; }
+/* Dotknięcie twarzy powiększa lektora — w małym kółku giną oczy i usta */
+.awatar-twarz.robot { cursor: pointer; transition: width .25s, height .25s, flex-basis .25s; }
+.awatar-panel.duzy .awatar-twarz.robot { width: 168px; height: 168px; flex: 0 0 168px; }
+body.skupienie:has(.awatar-panel.duzy) #toast { top: calc(240px + env(safe-area-inset-top)); }
