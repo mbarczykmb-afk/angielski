@@ -19,7 +19,9 @@
 var EMOCJE = ["neutralna", "radosc", "zaciekawienie", "zdziwienie", "troska", "rozbawienie"];
 
 var Awatar = {
-  el: null,          // korzeń SVG
+  el: null,          // korzeń SVG (rysowana twarz)
+  robot: null,       // instancja robota 3D, gdy wybrany
+  _proba: 0,         // numer wstawienia — spóźniony robot nie nadpisze nowszego panelu
   status: null,      // podpis pod imieniem
   stan: "czeka",     // czeka | mowi | slucha | mysli
   emocja: "neutralna",
@@ -27,9 +29,23 @@ var Awatar = {
   _mrug: null,       // uchwyt mrugania
   _powrot: null,     // uchwyt powrotu do neutralnej miny
 
-  wlaczony: function () {
+  /**
+   * Który lektor na ekranie: "robot" (3D), "twarz" (rysowana Emma) albo "brak".
+   * Starsze ustawienia miały tylko przełącznik awatar: true/false.
+   */
+  styl: function () {
     var ust = (App.stan && App.stan.user.ustawienia) || {};
-    return ust.awatar !== false;
+    if (ust.awatarStyl === "robot" || ust.awatarStyl === "twarz" || ust.awatarStyl === "brak") return ust.awatarStyl;
+    return ust.awatar === false ? "brak" : "robot";
+  },
+
+  wlaczony: function () {
+    return this.styl() !== "brak";
+  },
+
+  // Czy coś stoi w panelu — rysowana twarz albo robot
+  _zamontowany: function () {
+    return !!(this.el || this.robot);
   },
 
   /**
@@ -41,24 +57,38 @@ var Awatar = {
     if (!panel) return;
 
     if (!this.wlaczony()) {
-      panel.hidden = true;
-      this.el = null;
+      this.schowaj();
       return;
     }
 
     var egzaminator = wariant === "egzaminator";
-    var klucz = egzaminator ? "egzaminator" : "lektor";
+    var styl = this.styl() === "robot" && Robot3D.dostepny() ? "robot" : "twarz";
+    var klucz = (egzaminator ? "egzaminator" : "lektor") + "-" + styl;
 
     // Ten sam wariant już stoi — nie przerysowujemy, żeby nie gubić animacji
-    if (this.el && panel.dataset.wariant === klucz && !panel.hidden) return;
+    if (this._zamontowany() && panel.dataset.wariant === klucz && !panel.hidden) return;
 
+    this._odmontuj();
     panel.dataset.wariant = klucz;
     panel.hidden = false;
-    panel.innerHTML =
-      '<div class="awatar-twarz">' + rysunekTwarzy(egzaminator) + "</div>" +
-      '<div class="awatar-opis"><b>' + (egzaminator ? "Mr Harris · egzaminator" : "Emma · lektorka") + "</b>" +
-      '<span id="awatar-status">' + (egzaminator ? "Egzamin ustny" : "Gotowa do rozmowy") + "</span></div>";
 
+    if (styl === "robot") {
+      this._pokazRobota(panel, egzaminator);
+    } else {
+      this._pokazTwarz(panel, egzaminator);
+    }
+  },
+
+  _opis: function (egzaminator, robot) {
+    var imie = egzaminator
+      ? (robot ? "Unit X · egzaminator" : "Mr Harris · egzaminator")
+      : (robot ? "Nova · lektorka" : "Emma · lektorka");
+    return '<div class="awatar-opis"><b>' + imie + "</b>" +
+      '<span id="awatar-status">' + (egzaminator ? "Egzamin ustny" : "Gotowa do rozmowy") + "</span></div>";
+  },
+
+  _pokazTwarz: function (panel, egzaminator) {
+    panel.innerHTML = '<div class="awatar-twarz">' + rysunekTwarzy(egzaminator) + "</div>" + this._opis(egzaminator, false);
     this.el = panel.querySelector("svg");
     this.status = document.getElementById("awatar-status");
     this.ustawEmocje("neutralna");
@@ -66,21 +96,63 @@ var Awatar = {
     this._zacznijMrugac();
   },
 
-  schowaj: function () {
-    var panel = document.getElementById("awatar-panel");
-    if (panel) panel.hidden = true;
+  // Robot wczytuje się asynchronicznie (biblioteka 3D). Do tego czasu panel
+  // pokazuje pustą, podświetloną tarczę, a gdy coś pójdzie nie tak — rysowaną twarz.
+  _pokazRobota: function (panel, egzaminator) {
+    var self = this;
+    var proba = ++this._proba;
+
+    panel.innerHTML = '<div class="awatar-twarz robot' + (egzaminator ? " egzaminator" : "") + '"></div>' +
+      this._opis(egzaminator, true);
+    this.status = document.getElementById("awatar-status");
+    this.ustawStan(this.stan || "czeka");
+
+    Robot3D.utworz(panel.querySelector(".awatar-twarz"), egzaminator ? "egzaminator" : "lektor")
+      .then(function (robot) {
+        // W międzyczasie panel mógł zostać przerysowany albo schowany
+        if (proba !== self._proba) { robot.zniszcz(); return; }
+        self.robot = robot;
+        robot.ustawEmocje(self.emocja);
+        robot.ustawStan(self.stan);
+      })
+      .catch(function (e) {
+        console.warn("Robot 3D nie wystartował, zostaje rysowana twarz:", e);
+        if (proba !== self._proba) return;
+        panel.dataset.wariant = (egzaminator ? "egzaminator" : "lektor") + "-twarz";
+        self._pokazTwarz(panel, egzaminator);
+      });
+  },
+
+  _odmontuj: function () {
+    this._proba++;
+    if (this.robot) {
+      this.robot.zniszcz();
+      this.robot = null;
+    }
     this._zatrzymajUsta();
     clearTimeout(this._mrug);
     this.el = null;
   },
 
+  schowaj: function () {
+    var panel = document.getElementById("awatar-panel");
+    if (panel) {
+      panel.hidden = true;
+      panel.dataset.wariant = "";
+    }
+    this._odmontuj();
+  },
+
   ustawStan: function (stan) {
     this.stan = stan;
-    if (!this.el) return;
+    if (this.robot) this.robot.ustawStan(stan);
+    if (!this.el && !this.status) return;
 
-    ["czeka", "mowi", "slucha", "mysli"].forEach(function (s) {
-      Awatar.el.classList.toggle("stan-" + s, s === stan);
-    });
+    if (this.el) {
+      ["czeka", "mowi", "slucha", "mysli"].forEach(function (s) {
+        Awatar.el.classList.toggle("stan-" + s, s === stan);
+      });
+    }
 
     var panel = document.getElementById("awatar-panel");
     if (panel) panel.dataset.stan = stan;
@@ -88,7 +160,8 @@ var Awatar = {
     var podpisy = { mowi: "mówi…", slucha: "słucha Cię…", mysli: "zastanawia się…", czeka: "Twoja kolej" };
     if (this.status) this.status.textContent = podpisy[stan] || "";
 
-    if (stan === "mowi") this._zacznijUsta();
+    // Ruch ust liczymy tu tylko dla rysowanej twarzy — robot ma własny korektor
+    if (this.el && stan === "mowi") this._zacznijUsta();
     else this._zatrzymajUsta();
   },
 
@@ -99,11 +172,14 @@ var Awatar = {
   ustawEmocje: function (emocja, naIle) {
     if (EMOCJE.indexOf(emocja) < 0) emocja = "neutralna";
     this.emocja = emocja;
-    if (!this.el) return;
+    if (this.robot) this.robot.ustawEmocje(emocja);
+    if (!this._zamontowany()) return;
 
-    EMOCJE.forEach(function (e) {
-      Awatar.el.classList.toggle("emocja-" + e, e === emocja);
-    });
+    if (this.el) {
+      EMOCJE.forEach(function (e) {
+        Awatar.el.classList.toggle("emocja-" + e, e === emocja);
+      });
+    }
 
     clearTimeout(this._powrot);
     if (emocja !== "neutralna") {
@@ -115,8 +191,9 @@ var Awatar = {
 
   // Przeglądarka zgłasza początek każdego słowa — wtedy usta otwierają się szerzej
   slowo: function () {
-    if (!this.el || this.stan !== "mowi") return;
-    this._otworz(0.75 + Math.random() * 0.25);
+    if (this.stan !== "mowi") return;
+    if (this.robot) this.robot.slowo();
+    if (this.el) this._otworz(0.75 + Math.random() * 0.25);
   },
 
   _otworz: function (ile) {

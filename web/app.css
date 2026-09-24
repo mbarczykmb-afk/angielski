@@ -920,3 +920,14 @@ input[type="range"] { accent-color: var(--zielony2); padding: 0; background: tra
 
 /* W rozmowie komunikat nie może zasłaniać twarzy lektora */
 body.skupienie #toast { top: calc(160px + env(safe-area-inset-top)); }
+
+/* Robot 3D: płótno WebGL w okrągłym medalionie z poświatą w kolorze oczu */
+.awatar-twarz.robot {
+  width: 86px; height: 86px; flex: 0 0 86px;
+  border-radius: 50%; overflow: hidden;
+  background: radial-gradient(circle at 50% 38%, rgba(127, 245, 217, .28), rgba(36, 196, 143, .07) 62%, rgba(13, 17, 23, 0) 72%);
+}
+.awatar-twarz.robot.egzaminator {
+  background: radial-gradient(circle at 50% 38%, rgba(108, 180, 255, .28), rgba(59, 130, 246, .07) 62%, rgba(13, 17, 23, 0) 72%);
+}
+.awatar-twarz.robot canvas { width: 100% !important; height: 100% !important; display: block; }

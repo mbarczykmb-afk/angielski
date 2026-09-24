@@ -35,9 +35,14 @@ function rysujUstawienia() {
     przelacznik("ust-glos", "Lektor czyta odpowiedzi", ust.glos !== false) +
     przelacznik("ust-bez-rak", "Rozmowa bez rąk", ust.bezRak !== false) +
     przelacznik("ust-tryb-sluchania", "Tekst zakryty do dotknięcia", ust.trybSluchania !== false) +
-    przelacznik("ust-awatar", "Gadająca głowa lektora", ust.awatar !== false) +
+
     '<p class="mini" style="margin-top:8px">Bez rąk: mikrofon włącza się sam, gdy lektor skończy mówić. ' +
     "Tekst zakryty: najpierw słuchasz, a zapis odsłaniasz dotknięciem dopiero, gdy czegoś nie wychwycisz.</p>" +
+    '<label for="pole-awatar">Lektor na ekranie</label>' +
+    '<select id="pole-awatar">' +
+    [["robot", "Robot 3D — Nova"], ["twarz", "Rysowana twarz — Emma"], ["brak", "Bez twarzy"]].map(function (o) {
+      return '<option value="' + o[0] + '"' + (Awatar.styl() === o[0] ? " selected" : "") + ">" + o[1] + "</option>";
+    }).join("") + "</select>" +
     '<label for="pole-pauza">Ile ciszy kończy Twoją wypowiedź: <span id="etykieta-pauza">' +
     ((ust.pauzaMs || 3500) / 1000).toFixed(1) + " s</span></label>" +
     '<input id="pole-pauza" type="range" min="1500" max="8000" step="500" value="' + (ust.pauzaMs || 3500) + '">' +
@@ -163,7 +168,7 @@ function podepnijUstawienia() {
       mikrofon: true,
       bezRak: document.getElementById("ust-bez-rak").checked,
       trybSluchania: document.getElementById("ust-tryb-sluchania").checked,
-      awatar: document.getElementById("ust-awatar").checked,
+      awatarStyl: document.getElementById("pole-awatar").value,
       pauzaMs: Number(document.getElementById("pole-pauza").value),
       tempoMowy: Number(document.getElementById("pole-tempo").value),
       modelRozmowy: document.getElementById("pole-model").value,
@@ -183,7 +188,7 @@ function podepnijUstawienia() {
     }
   }
 
-  ["ust-glos", "ust-bez-rak", "ust-tryb-sluchania", "ust-awatar", "pole-model", "pole-cel-dzienny"].forEach(function (id) {
+  ["ust-glos", "ust-bez-rak", "ust-tryb-sluchania", "pole-awatar", "pole-model", "pole-cel-dzienny"].forEach(function (id) {
     document.getElementById(id).onchange = zapisz;
   });
 
