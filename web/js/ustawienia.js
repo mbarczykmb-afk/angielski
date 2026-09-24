@@ -40,7 +40,7 @@ function rysujUstawienia() {
     "Tekst zakryty: najpierw słuchasz, a zapis odsłaniasz dotknięciem dopiero, gdy czegoś nie wychwycisz.</p>" +
     '<label for="pole-awatar">Lektor na ekranie</label>' +
     '<select id="pole-awatar">' +
-    [["robot", "Robot 3D — Nova"], ["twarz", "Rysowana twarz — Emma"], ["brak", "Bez twarzy"]].map(function (o) {
+    [["android", "Android 3D — Nova"], ["robot", "Robot 3D — Nova"], ["twarz", "Rysowana twarz — Emma"], ["brak", "Bez twarzy"]].map(function (o) {
       return '<option value="' + o[0] + '"' + (Awatar.styl() === o[0] ? " selected" : "") + ">" + o[1] + "</option>";
     }).join("") + "</select>" +
     '<label for="pole-pauza">Ile ciszy kończy Twoją wypowiedź: <span id="etykieta-pauza">' +

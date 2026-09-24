@@ -268,13 +268,17 @@ function zbudujRobota(THREE, kontener, egzaminator) {
     nastepneMrug: 1.5,
     ostatniaKlatka: 0,
     zyje: true,
+    dt: 1 / 30,
+    start: -1,
     rot: { x: 0, y: 0, z: 0 },
     poz: { y: 0, z: 0 },
     kolorAnteny: new THREE.Color(KOLORY_ANTENY.czeka),
   };
 
+  // Wygładzanie zależne od czasu, nie od liczby klatek: ta sama płynność
+  // na szybkim telefonie i na słabym, który rysuje 10 klatek na sekundę.
   function lagodnie(obecna, cel, tempo) {
-    return obecna + (cel - obecna) * tempo;
+    return obecna + (cel - obecna) * (1 - Math.pow(1 - Math.min(tempo, 0.999), st.dt * 30));
   }
 
   function ustawMine() {
@@ -304,10 +308,12 @@ function zbudujRobota(THREE, kontener, egzaminator) {
 
     // Około 30 klatek na sekundę wystarczy twarzy, a bateria to odczuje
     if (czasMs - st.ostatniaKlatka < 32) return;
+    if (st.start < 0) st.start = czasMs;
+    st.dt = Math.min(0.25, (czasMs - (st.ostatniaKlatka || czasMs - 33)) / 1000);
     st.ostatniaKlatka = czasMs;
     if (document.hidden || !kontener.isConnected || kontener.offsetParent === null) return;
 
-    var t = czasMs / 1000;
+    var t = (czasMs - st.start) / 1000;
     var e = st.emocja;
     var stan = st.stan;
 
@@ -414,7 +420,7 @@ function zbudujRobota(THREE, kontener, egzaminator) {
     },
     ustawEmocje: function (emocja) {
       st.emocja = emocja;
-      st.odEmocji = performance.now() / 1000;
+      st.odEmocji = st.start < 0 ? 0 : (performance.now() - st.start) / 1000;
       ustawMine();
     },
     // Granica słowa od syntezatora — słupki podskakują wyżej

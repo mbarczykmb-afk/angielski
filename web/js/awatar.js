@@ -30,13 +30,14 @@ var Awatar = {
   _powrot: null,     // uchwyt powrotu do neutralnej miny
 
   /**
-   * Który lektor na ekranie: "robot" (3D), "twarz" (rysowana Emma) albo "brak".
+   * Który lektor na ekranie: "android" (twarz 3D), "robot" (robot 3D),
+   * "twarz" (rysowana Emma) albo "brak".
    * Starsze ustawienia miały tylko przełącznik awatar: true/false.
    */
   styl: function () {
     var ust = (App.stan && App.stan.user.ustawienia) || {};
-    if (ust.awatarStyl === "robot" || ust.awatarStyl === "twarz" || ust.awatarStyl === "brak") return ust.awatarStyl;
-    return ust.awatar === false ? "brak" : "robot";
+    if (["android", "robot", "twarz", "brak"].indexOf(ust.awatarStyl) >= 0) return ust.awatarStyl;
+    return ust.awatar === false ? "brak" : "android";
   },
 
   wlaczony: function () {
@@ -62,7 +63,8 @@ var Awatar = {
     }
 
     var egzaminator = wariant === "egzaminator";
-    var styl = this.styl() === "robot" && Robot3D.dostepny() ? "robot" : "twarz";
+    var styl = this.styl();
+    if ((styl === "android" || styl === "robot") && !Robot3D.dostepny()) styl = "twarz";
     var klucz = (egzaminator ? "egzaminator" : "lektor") + "-" + styl;
 
     // Ten sam wariant już stoi — nie przerysowujemy, żeby nie gubić animacji
@@ -72,8 +74,8 @@ var Awatar = {
     panel.dataset.wariant = klucz;
     panel.hidden = false;
 
-    if (styl === "robot") {
-      this._pokazRobota(panel, egzaminator);
+    if (styl === "android" || styl === "robot") {
+      this._pokazRobota(panel, egzaminator, styl === "android" ? Android3D : Robot3D);
     } else {
       this._pokazTwarz(panel, egzaminator);
     }
@@ -98,7 +100,7 @@ var Awatar = {
 
   // Robot wczytuje się asynchronicznie (biblioteka 3D). Do tego czasu panel
   // pokazuje pustą, podświetloną tarczę, a gdy coś pójdzie nie tak — rysowaną twarz.
-  _pokazRobota: function (panel, egzaminator) {
+  _pokazRobota: function (panel, egzaminator, silnik) {
     var self = this;
     var proba = ++this._proba;
 
@@ -107,7 +109,7 @@ var Awatar = {
     this.status = document.getElementById("awatar-status");
     this.ustawStan(this.stan || "czeka");
 
-    Robot3D.utworz(panel.querySelector(".awatar-twarz"), egzaminator ? "egzaminator" : "lektor")
+    silnik.utworz(panel.querySelector(".awatar-twarz"), egzaminator ? "egzaminator" : "lektor")
       .then(function (robot) {
         // W międzyczasie panel mógł zostać przerysowany albo schowany
         if (proba !== self._proba) { robot.zniszcz(); return; }

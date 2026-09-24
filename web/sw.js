@@ -3,7 +3,7 @@
    Podnieś WERSJA po każdej zmianie plików, żeby telefon pobrał nowe.
    ============================================================ */
 
-var WERSJA = "angielski-ai-v14";
+var WERSJA = "angielski-ai-v15";
 
 var SZKIELET = [
   "./",
@@ -21,6 +21,8 @@ var SZKIELET = [
   "./js/dzis.js",
   "./js/rozmowa.js",
   "./js/robot3d.js",
+  "./js/android3d.js",
+  "./js/vendor/RoomEnvironment.js",
   "./js/vendor/three.module.min.js",
   "./js/awatar.js",
   "./js/matura.js",
