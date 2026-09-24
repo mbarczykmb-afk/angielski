@@ -98,7 +98,7 @@ function rysunekZTwarza({ zaokraglenie, skala, twarz }) {
   <rect width="512" height="512" rx="${zaokraglenie}" fill="url(#tlo)"/>
   <rect width="512" height="512" rx="${zaokraglenie}" fill="url(#poswiata)"/>
   <g transform="translate(256 256) scale(${skala}) translate(-256 -256)">
-    <image href="data:image/png;base64,${twarz}" x="6" y="30" width="500" height="500" filter="url(#cien)"/>
+    <image href="data:image/png;base64,${twarz}" x="-40" y="-22" width="600" height="600" filter="url(#cien)"/>
     <g filter="url(#cien)">
       <path fill="#ffffff" d="M372 350 H468 A26 26 0 0 1 494 376 V432 A26 26 0 0 1 468 458
         H412 L384 482 A4 4 0 0 1 377 479 V458 H372 A26 26 0 0 1 346 432 V376 A26 26 0 0 1 372 350 Z"/>
@@ -116,7 +116,7 @@ async function renderujTwarz(przegladarka) {
     if (u === "/twarz.html") {
       res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
       return res.end('<!doctype html><body style="margin:0;background:transparent"><div id="t" style="width:640px;height:640px"></div>' +
-        '<script src="/js/robot3d.js"></script><script src="/js/android3d.js"></script>');
+        '<script src="/js/robot3d.js"></script><script src="/js/vendor/twarz-mediapipe.js"></script><script src="/js/android3d.js"></script>');
     }
     const plik = path.join(WEB, u);
     if (!plik.startsWith(WEB) || !fs.existsSync(plik)) { res.writeHead(404); return res.end(); }
