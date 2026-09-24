@@ -109,19 +109,23 @@ function rysujUstawienia() {
 /**
  * Wersja aplikacji w telefonie obok wersji backendu.
  *
- * Wersję aplikacji bierzemy z nazwy pamięci podręcznej service workera,
- * a nie ze stałej w kodzie — stała potrafi zostać nieprzepisana i wtedy
- * kłamie akurat wtedy, gdy jest najbardziej potrzebna.
+ * WERSJA_APLIKACJI to wersja kodu, który właśnie działa. Porównujemy ją
+ * z wersją pobraną przez service workera: gdy się różnią, telefon ma już
+ * nowe pliki, ale na ekranie wciąż działa stary kod.
  */
 async function pokazWersje() {
   var el = document.getElementById("wersje-uslugi");
   if (!el) return;
 
-  var aplikacja = "—";
+  var aplikacja = WERSJA_APLIKACJI;
   try {
     var klucze = await caches.keys();
     var nasze = klucze.filter(function (k) { return k.indexOf("angielski-ai-") === 0; });
-    if (nasze.length) aplikacja = nasze[nasze.length - 1].replace("angielski-ai-", "");
+    var pobrana = nasze.length ? nasze[nasze.length - 1].replace("angielski-ai-", "") : null;
+    // Działa stary kod, choć nowy już się pobrał — trzeba zamknąć i otworzyć
+    if (pobrana && pobrana !== WERSJA_APLIKACJI) {
+      aplikacja = WERSJA_APLIKACJI + " (pobrana " + pobrana + " — zamknij i otwórz aplikację)";
+    }
   } catch (e) {
     // Bez service workera (np. tryb prywatny) po prostu nie wiemy
   }

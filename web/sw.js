@@ -3,7 +3,7 @@
    Podnieś WERSJA po każdej zmianie plików, żeby telefon pobrał nowe.
    ============================================================ */
 
-var WERSJA = "angielski-ai-v22";
+var WERSJA = "angielski-ai-v23";
 
 var SZKIELET = [
   "./",
@@ -59,6 +59,23 @@ self.addEventListener("activate", function (zdarzenie) {
   );
 });
 
+// Najpierw sieć, pamięć tylko awaryjnie. Wcześniej było odwrotnie (najpierw
+// pamięć, odświeżenie w tle) i telefon potrafił długo uruchamiać starą wersję —
+// poprawki nie docierały, choć były już opublikowane. Sieć ma 4 sekundy;
+// potem, albo bez internetu, aplikacja startuje z zapamiętanych plików.
+function zSieci(adres) {
+  return new Promise(function (ok, blad) {
+    var czas = setTimeout(function () { blad(new Error("timeout")); }, 4000);
+    fetch(new Request(adres, { cache: "no-cache", credentials: "same-origin" })).then(function (odp) {
+      clearTimeout(czas);
+      ok(odp);
+    }, function (e) {
+      clearTimeout(czas);
+      blad(e);
+    });
+  });
+}
+
 self.addEventListener("fetch", function (zdarzenie) {
   var zadanie = zdarzenie.request;
 
@@ -66,21 +83,20 @@ self.addEventListener("fetch", function (zdarzenie) {
 
   // Zapytania do API zawsze idą do sieci — cache postępów byłby mylący
   if (zadanie.url.indexOf("/api/") > -1) return;
+  // Obce adresy (np. zdjęcia do matury) — bez pośrednictwa
+  if (new URL(zadanie.url).origin !== self.location.origin) return;
 
-  // Szkielet aplikacji: najpierw cache (szybki start), w tle odświeżenie
   zdarzenie.respondWith(
-    caches.match(zadanie).then(function (zCache) {
-      var zSieci = fetch(zadanie).then(function (odp) {
-        if (odp && odp.status === 200 && odp.type === "basic") {
-          var kopia = odp.clone();
-          caches.open(WERSJA).then(function (magazyn) { magazyn.put(zadanie, kopia); });
-        }
-        return odp;
-      }).catch(function () {
-        return zCache;
+    zSieci(zadanie.url).then(function (odp) {
+      if (odp && odp.status === 200 && odp.type === "basic") {
+        var kopia = odp.clone();
+        caches.open(WERSJA).then(function (magazyn) { magazyn.put(zadanie, kopia); });
+      }
+      return odp;
+    }).catch(function () {
+      return caches.match(zadanie).then(function (zCache) {
+        return zCache || (zadanie.mode === "navigate" ? caches.match("./index.html") : Response.error());
       });
-
-      return zCache || zSieci;
     })
   );
 });
