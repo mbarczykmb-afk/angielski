@@ -89,7 +89,9 @@ var Mowa = {
 
   // Numer wersji składania zapisu — widać go w diagnostyce mikrofonu,
   // więc od razu wiadomo, czy telefon ma już najnowszą poprawkę
-  WERSJA_ZAPISU: 3,
+  WERSJA_ZAPISU: 4,
+  // Domyślny czas ciszy, po którym uznajemy wypowiedź za skończoną (ms)
+  PAUZA_DOMYSLNA: 6000,
   diagnostyka: null,
 
   /**
@@ -219,9 +221,41 @@ var Mowa = {
   },
 
   /**
-   * Nasłuch jednej wypowiedzi.
-   * onTekst(tekst, koncowy) — wołane też dla wyników częściowych, żeby
-   * uczeń widział na bieżąco, co zostało rozpoznane.
+   * Ile ciszy (ms) czekać po tych słowach, zanim uznamy wypowiedź za skończoną.
+   * Zdanie urwane na spójniku, przyimku albo "um" wyraźnie jeszcze trwa —
+   * uczący się szuka wtedy słowa, więc dostaje więcej czasu.
+   */
+  pauzaUcznia: function (ust) {
+    ust = ust || {};
+    var p = Number(ust.pauzaMs);
+    // Dawna domyślna wartość (3,5 s) zapisywała się przy każdej zmianie ustawień.
+    // Przed zmianą czasu (pauzaV2) traktujemy ją jak brak wyboru — nowy domyślny czas.
+    if (!p || (!ust.pauzaV2 && p <= 3500)) return Mowa.PAUZA_DOMYSLNA;
+    return p;
+  },
+
+  czasCiszy: function (tekst, pauza) {
+    var slowa = String(tekst || "").toLowerCase().replace(/[^a-z' ]+/g, " ").trim().split(/\s+/);
+    var ostatnie = slowa[slowa.length - 1] || "";
+    return Mowa.URWANE.indexOf(ostatnie) >= 0 ? Math.round(pauza * 1.6) : pauza;
+  },
+
+  URWANE: ["and", "but", "or", "so", "because", "that", "which", "who", "when", "if", "than", "then",
+    "the", "a", "an", "to", "of", "in", "on", "at", "for", "with", "about", "from", "my", "your", "our",
+    "i", "i'm", "we", "you", "is", "are", "was", "were", "be", "have", "has", "would", "could", "should",
+    "will", "can", "think", "like", "very", "really", "um", "uh", "er", "erm", "hmm", "mm", "well"],
+
+  /**
+   * Nasłuch jednej wypowiedzi — tak długiej, jak uczeń potrzebuje.
+   *
+   * Koniec wypowiedzi wyznacza WYŁĄCZNIE nasz licznik ciszy. Chrome (zwłaszcza
+   * na Androidzie) sam przerywa nagrywanie po kilku sekundach milczenia, nawet
+   * w trybie ciągłym — wtedy po cichu wznawiamy nasłuch i doklejamy dalszą część.
+   * Pasek nad mikrofonem pokazuje, ile ciszy zostało; "+5 s" daje więcej czasu,
+   * dotknięcie mikrofonu wysyła od razu.
+   *
+   * onTekst(tekst) — bieżący zapis, także częściowy
+   * onKoniec(tekst) — cała wypowiedź ("" gdy nic nie padło)
    */
   sluchaj: function (onTekst, onKoniec) {
     var Rozpoznawanie = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -239,109 +273,209 @@ var Mowa = {
     this.cisza(); // lektor milknie, gdy uczeń zaczyna mówić
 
     var ustawienia = (App.stan && App.stan.user.ustawienia) || {};
-    var pauza = Number(ustawienia.pauzaMs || 3500);
-
-    var r = new Rozpoznawanie();
-    r.lang = "en-US";
-    r.interimResults = true;
-    // Tryb ciągły plus własny licznik ciszy. Bez tego przeglądarka kończy
-    // nagranie przy pierwszym zawahaniu, a uczący się języka waha się często —
-    // szuka słowa w środku zdania i to jest normalna część mówienia.
-    r.continuous = true;
-    r.maxAlternatives = 1;
+    var pauza = Mowa.pauzaUcznia(ustawienia);
+    var NA_START = 5000;        // na zebranie myśli przed pierwszym słowem
+    var CALOSC_MAX = 180000;    // najdłuższa wypowiedź: 3 minuty
 
     var self = this;
-    var finalne = "";
-    var ostatnie = "";
+    var start = Date.now();
+    var dotychczas = "";        // tekst z wcześniejszych, już zamkniętych nagrań
+    var sesja = { finalne: "", ostatnie: "" };
+    var cokolwiekPowiedziano = false;
+    var konczymy = false;
+    var zakonczone = false;
+    var bladKrytyczny = false;
+    var termin = start + pauza + NA_START, okno = pauza + NA_START;
+    var ostatniGlos = 0;
+    var r = null, zegar = null;
     // Android przysyła kolejne wersje tego samego zdania jako osobne wyniki
     var narastajaco = /Android/i.test(navigator.userAgent || "");
-    // Surowy zapis tego, co przysłała przeglądarka — widać go w Więcej,
-    // gdy trzeba sprawdzić, skąd w tekście wzięły się dziwne powtórzenia
+    // Surowy zapis tego, co przysłała przeglądarka — widać go w Więcej
     var diag = Mowa.diagnostyka = {
       wersjaZapisu: Mowa.WERSJA_ZAPISU, kiedy: new Date().toISOString(),
-      przegladarka: navigator.userAgent, zdarzenia: [], wynik: null,
+      przegladarka: navigator.userAgent, zdarzenia: [], wznowienia: 0, wynik: null,
     };
-    var licznik = null;
-    var cokolwiekPowiedziano = false;
 
-    function odlozKoniec(ile) {
-      clearTimeout(licznik);
-      licznik = setTimeout(function () {
-        try { r.stop(); } catch (e) { /* już zatrzymane */ }
-      }, ile);
+    function tekstSesji() {
+      return sesja.ostatnie.length > sesja.finalne.length ? sesja.ostatnie : sesja.finalne;
+    }
+    function tekstCaly() {
+      var a = dotychczas.trim(), b = tekstSesji().trim();
+      if (!a) return b;
+      if (!b) return a;
+      // Po wznowieniu Android bywa, że powtarza końcówkę — zwijamy narastanie
+      return Mowa.zwinNarastanie(a + " " + b);
     }
 
-    r.onstart = function () {
-      self.slucha = true;
-      if (typeof Awatar !== "undefined") Awatar.ustawStan("slucha");
-      document.getElementById("btn-mikrofon").classList.add("slucha");
-      // Na rozpoczęcie mówienia dajemy więcej czasu niż na pauzę w środku zdania
-      odlozKoniec(pauza + 4000);
-    };
+    function ustawTermin(ms) {
+      okno = ms;
+      termin = Date.now() + ms;
+    }
 
-    r.onresult = function (zdarzenie) {
-      var zapis = Mowa.zlozZapis(zdarzenie.results, narastajaco);
+    function zakoncz() {
+      if (konczymy) return;
+      konczymy = true;
+      try { if (r) r.stop(); } catch (e) { /* już zatrzymane */ }
+      // Gdyby przeglądarka nie zgłosiła końca, kończymy sami
+      setTimeout(dokoncz, 2500);
+    }
 
-      diag.zdarzenia.push({
-        od: zdarzenie.resultIndex,
-        wyniki: Array.prototype.slice.call(zdarzenie.results, -20).map(function (w) {
-          return [String((w[0] && w[0].transcript) || "").slice(0, 90), w.isFinal ? 1 : 0];
-        }),
-      });
-      if (diag.zdarzenia.length > 6) diag.zdarzenia.shift();
-
-      // Druga linia obrony: zwijamy narastające wersje także w gotowym tekście
-      finalne = Mowa.zwinNarastanie(zapis.gotowe);
-      ostatnie = Mowa.zwinNarastanie((zapis.gotowe + " " + zapis.czastkowe).trim());
-      cokolwiekPowiedziano = true;
-      onTekst(ostatnie, false);
-
-      // Każde kolejne słowo odsuwa moment zakończenia — mów tyle, ile chcesz
-      odlozKoniec(pauza);
-    };
-
-    r.onerror = function (zdarzenie) {
-      if (zdarzenie.error === "not-allowed" || zdarzenie.error === "service-not-allowed") {
-        toast("Brak zgody na mikrofon. Włącz ją w ustawieniach strony w Chrome.", false);
-      } else if (zdarzenie.error !== "aborted" && zdarzenie.error !== "no-speech") {
-        toast("Błąd mikrofonu: " + zdarzenie.error, false);
-      }
-    };
-
-    r.onend = function () {
-      clearTimeout(licznik);
+    function dokoncz() {
+      if (zakonczone) return;
+      zakonczone = true;
+      clearInterval(zegar);
       self.slucha = false;
+      self.rozpoznawanie = null;
+      self._zakoncz = null;
+      self._dodajCzas = null;
+      Mowa.pokazPasek(null);
       if (typeof Awatar !== "undefined" && Awatar.stan === "slucha") Awatar.ustawStan("czeka");
-
       var przycisk = document.getElementById("btn-mikrofon");
       if (przycisk) przycisk.classList.remove("slucha");
-      self.rozpoznawanie = null;
 
-      // Gdy nowsza, jeszcze niezamknięta wersja zdania zastąpiła zamkniętą,
-      // bierzemy pełniejszy zapis — inaczej zgubilibyśmy końcówkę wypowiedzi
-      var wynikKoncowy = ostatnie.length > finalne.trim().length ? ostatnie : finalne.trim();
-      diag.wynik = wynikKoncowy;
-      if (onKoniec) onKoniec(cokolwiekPowiedziano ? wynikKoncowy : "");
+      dotychczas = tekstCaly();
+      diag.wynik = dotychczas;
+      if (onKoniec) onKoniec(cokolwiekPowiedziano ? dotychczas.trim() : "");
+    }
+
+    // Licznik ciszy i pasek postępu — 10 razy na sekundę
+    zegar = setInterval(function () {
+      var zostalo = termin - Date.now();
+      if (zostalo <= 0 || Date.now() - start > CALOSC_MAX) {
+        zakoncz();
+        return;
+      }
+      Mowa.pokazPasek({
+        ulamek: Math.max(0, Math.min(1, zostalo / okno)),
+        sekundy: Math.ceil(zostalo / 1000),
+        mowi: Date.now() - ostatniGlos < 700,
+        zaczal: cokolwiekPowiedziano,
+      });
+    }, 100);
+
+    function uruchom() {
+      if (konczymy) return dokoncz();
+      r = new Rozpoznawanie();
+      r.lang = "en-US";
+      r.interimResults = true;
+      r.continuous = true;
+      r.maxAlternatives = 1;
+      sesja = { finalne: "", ostatnie: "" };
+
+      r.onresult = function (zdarzenie) {
+        var zapis = Mowa.zlozZapis(zdarzenie.results, narastajaco);
+        diag.zdarzenia.push({
+          od: zdarzenie.resultIndex,
+          wyniki: Array.prototype.slice.call(zdarzenie.results, -20).map(function (w) {
+            return [String((w[0] && w[0].transcript) || "").slice(0, 90), w.isFinal ? 1 : 0];
+          }),
+        });
+        if (diag.zdarzenia.length > 6) diag.zdarzenia.shift();
+
+        // Druga linia obrony: zwijamy narastające wersje także w gotowym tekście
+        sesja.finalne = Mowa.zwinNarastanie(zapis.gotowe);
+        sesja.ostatnie = Mowa.zwinNarastanie((zapis.gotowe + " " + zapis.czastkowe).trim());
+        cokolwiekPowiedziano = true;
+        ostatniGlos = Date.now();
+
+        var caly = tekstCaly();
+        onTekst(caly, false);
+        // Każde słowo odsuwa koniec; urwane zdanie dostaje więcej czasu
+        ustawTermin(Mowa.czasCiszy(caly, pauza));
+      };
+
+      r.onerror = function (zdarzenie) {
+        var b = zdarzenie.error;
+        if (b === "not-allowed" || b === "service-not-allowed") {
+          bladKrytyczny = true;
+          toast("Brak zgody na mikrofon. Włącz ją w ustawieniach strony w Chrome.", false);
+        } else if (b === "aborted") {
+          bladKrytyczny = true; // ktoś inny przejął mikrofon albo nasłuch przerwano celowo
+        } else if (b === "network" || b === "audio-capture") {
+          bladKrytyczny = true;
+          toast(b === "network" ? "Rozpoznawanie mowy potrzebuje internetu." : "Nie mogę użyć mikrofonu.", false);
+        }
+        // "no-speech" to tylko cisza — wznowimy nasłuch w onend
+      };
+
+      r.onend = function () {
+        // Zamykamy to, co padło w tym nagraniu, i — jeśli licznik ciszy jeszcze
+        // nie minął — od razu słuchamy dalej
+        dotychczas = tekstCaly();
+        sesja = { finalne: "", ostatnie: "" };
+        if (!konczymy && !bladKrytyczny && Date.now() - start < CALOSC_MAX && diag.wznowienia < 60) {
+          diag.wznowienia++;
+          setTimeout(uruchom, 60);
+          return;
+        }
+        dokoncz();
+      };
+
+      self.rozpoznawanie = r;
+      try {
+        r.start();
+      } catch (e) {
+        bladKrytyczny = true;
+        toast("Nie udało się włączyć mikrofonu.", false);
+        dokoncz();
+      }
+    }
+
+    this._zakoncz = zakoncz;
+    this._dodajCzas = function (ms) {
+      termin += ms;
+      okno = Math.max(okno, termin - Date.now());
     };
 
-    this.rozpoznawanie = r;
-    try {
-      r.start();
-      // Flagę stawiamy od razu, nie dopiero w onstart. Zdarzenie startu przychodzi
-      // z opóźnieniem, a w tej szczelinie drugie wywołanie sluchaj() przeszłoby
-      // przez bramkę na początku funkcji i uruchomiło równoległy nasłuch —
-      // dwa nasłuchy to każde słowo zapisane dwa razy.
-      this.slucha = true;
-    } catch (e) {
-      this.slucha = false;
-      toast("Nie udało się włączyć mikrofonu.", false);
+    // Flagę stawiamy od razu, nie dopiero po starcie nagrania. Inaczej drugie
+    // wywołanie sluchaj() w tej szczelinie uruchomiłoby równoległy nasłuch.
+    this.slucha = true;
+    if (typeof Awatar !== "undefined") Awatar.ustawStan("slucha");
+    var przycisk = document.getElementById("btn-mikrofon");
+    if (przycisk) przycisk.classList.add("slucha");
+    uruchom();
+  },
+
+  // Skończyłem — wyślij od razu
+  stop: function () {
+    if (this._zakoncz) this._zakoncz();
+    else if (this.rozpoznawanie) {
+      try { this.rozpoznawanie.stop(); } catch (e) { /* już zatrzymane */ }
     }
   },
 
-  stop: function () {
-    if (this.rozpoznawanie) {
-      try { this.rozpoznawanie.stop(); } catch (e) { /* już zatrzymane */ }
+  // "+5 s" — jeszcze myślę
+  dodajCzas: function (ms) {
+    if (this._dodajCzas) this._dodajCzas(ms || 5000);
+  },
+
+  /**
+   * Pasek ciszy nad mikrofonem. stan = null chowa pasek.
+   * stan: { ulamek 0..1 — ile czasu zostało, sekundy, mowi, zaczal }
+   */
+  pokazPasek: function (stan) {
+    var pasek = document.getElementById("pasek-ciszy");
+    if (!pasek) {
+      var miejsce = document.getElementById("czat-podpowiedz");
+      if (!miejsce || !stan) return;
+      pasek = document.createElement("div");
+      pasek.id = "pasek-ciszy";
+      pasek.innerHTML = '<div class="pc-tor"><div class="pc-wypelnienie"></div></div>' +
+        '<div class="pc-rzad"><span class="pc-opis"></span>' +
+        '<button type="button" class="pc-wiecej" aria-label="Daj mi jeszcze 5 sekund">+5 s</button></div>';
+      miejsce.parentNode.insertBefore(pasek, miejsce);
+      pasek.querySelector(".pc-wiecej").onclick = function () { Mowa.dodajCzas(5000); };
     }
+    if (!stan) { pasek.hidden = true; return; }
+    pasek.hidden = false;
+
+    var faza = stan.mowi ? "mowi" : !stan.zaczal ? "start" : stan.ulamek < 0.25 ? "koniec" : stan.ulamek < 0.5 ? "uwaga" : "cisza";
+    pasek.dataset.faza = faza;
+    pasek.querySelector(".pc-wypelnienie").style.transform = "scaleX(" + (stan.mowi ? 1 : stan.ulamek).toFixed(3) + ")";
+    pasek.querySelector(".pc-opis").textContent =
+      faza === "mowi" ? "Mówisz… pauza na zastanowienie jest OK"
+      : faza === "start" ? "Zbierz myśli i zacznij mówić · " + stan.sekundy + " s"
+      : "Cisza — wyślę za " + stan.sekundy + " s · dotknij mikrofonu, by wysłać teraz";
   },
 };
 

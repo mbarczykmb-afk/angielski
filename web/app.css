@@ -288,6 +288,28 @@ label { display: block; font-size: 12px; color: var(--przygasly); margin: 10px 0
   z-index: 55;
 }
 
+/* Pasek ciszy: ile czasu zostało do wysłania wypowiedzi. Mówienie trzyma go
+   pełnym, cisza go opróżnia — uczeń widzi, że może spokojnie pomyśleć. */
+#pasek-ciszy { margin: 0 6px 8px; }
+#pasek-ciszy[hidden] { display: none; }
+.pc-tor { height: 6px; border-radius: 3px; background: rgba(255, 255, 255, .08); overflow: hidden; }
+.pc-wypelnienie {
+  height: 100%; width: 100%; transform-origin: left center;
+  background: var(--zielony2); border-radius: 3px;
+  transition: transform .12s linear, background-color .3s;
+}
+#pasek-ciszy[data-faza="start"] .pc-wypelnienie { background: #60a5fa; }
+#pasek-ciszy[data-faza="uwaga"] .pc-wypelnienie { background: var(--zolty); }
+#pasek-ciszy[data-faza="koniec"] .pc-wypelnienie { background: var(--czerwony); }
+.pc-rzad { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 5px; }
+.pc-opis { font-size: 12px; color: var(--przygasly); line-height: 1.3; }
+#pasek-ciszy[data-faza="mowi"] .pc-opis { color: var(--zielony2); }
+.pc-wiecej {
+  flex: 0 0 auto; border: 1px solid var(--ramka); background: var(--tlo3, rgba(255,255,255,.06));
+  color: var(--tekst, #e6edf3); border-radius: 999px; padding: 5px 12px; font-size: 13px; font-weight: 600; cursor: pointer;
+}
+#pasek-ciszy[data-faza="mowi"] .pc-wiecej { visibility: hidden; }
+
 /* Co aplikacja teraz robi: słucha, czeka, rozpoznaje */
 #czat-podpowiedz {
   min-height: 17px;

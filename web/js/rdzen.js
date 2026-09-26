@@ -4,7 +4,7 @@
 
 // Wersja kodu, który NAPRAWDĘ działa na ekranie. Musi być równa końcówce
 // WERSJA w sw.js — pilnuje tego test web/test/wersja.test.mjs.
-var WERSJA_APLIKACJI = "v24";
+var WERSJA_APLIKACJI = "v25";
 
 var App = {
   stan: null,          // pełny stan z serwera

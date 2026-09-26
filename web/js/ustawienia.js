@@ -44,8 +44,10 @@ function rysujUstawienia() {
       return '<option value="' + o[0] + '"' + (Awatar.styl() === o[0] ? " selected" : "") + ">" + o[1] + "</option>";
     }).join("") + "</select>" +
     '<label for="pole-pauza">Ile ciszy kończy Twoją wypowiedź: <span id="etykieta-pauza">' +
-    ((ust.pauzaMs || 3500) / 1000).toFixed(1) + " s</span></label>" +
-    '<input id="pole-pauza" type="range" min="1500" max="8000" step="500" value="' + (ust.pauzaMs || 3500) + '">' +
+    (Mowa.pauzaUcznia(ust) / 1000).toFixed(1) + " s</span></label>" +
+    '<input id="pole-pauza" type="range" min="2000" max="15000" step="500" value="' + Mowa.pauzaUcznia(ust) + '">' +
+    '<p class="mini">Gdy urwiesz w pół zdania (and, because, um…), czekam o 60% dłużej. Pasek nad mikrofonem ' +
+    "pokazuje, ile ciszy zostało; „+5 s” daje więcej czasu, a dotknięcie mikrofonu wysyła od razu.</p>" +
     '<p class="mini">Krócej: szybsza wymiana zdań. Dłużej: masz czas poszukać słowa w środku zdania, ' +
     "bez przerywania w pół myśli.</p>" +
     '<label for="pole-tempo">Tempo lektora: <span id="etykieta-tempo">' + (ust.tempoMowy || 0.95) + "×</span></label>" +
@@ -218,6 +220,7 @@ function podepnijUstawienia() {
       trybSluchania: document.getElementById("ust-tryb-sluchania").checked,
       awatarStyl: document.getElementById("pole-awatar").value,
       pauzaMs: Number(document.getElementById("pole-pauza").value),
+      pauzaV2: true,
       tempoMowy: Number(document.getElementById("pole-tempo").value),
       modelRozmowy: document.getElementById("pole-model").value,
       celDzienny: Number(document.getElementById("pole-cel-dzienny").value),
