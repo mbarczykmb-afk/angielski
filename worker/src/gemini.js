@@ -34,7 +34,10 @@ export function naFormatGemini(wiadomosci) {
 // Gdy wybrany model nie istnieje albo jest przeciążony, próbujemy kolejnych.
 // "gemini-flash-latest" to alias, który Google przestawia na bieżący model Flash —
 // działa nawet wtedy, gdy konkretna nazwa z konfiguracji wypadła z oferty.
-export const MODELE_ZAPASOWE = ["gemini-flash-latest", "gemini-2.5-flash"];
+export const MODELE_ZAPASOWE = ["gemini-flash-latest"];
+
+// Jedno wywołanie Gemini nie może trzymać ucznia dłużej niż tyle (ms)
+const LIMIT_CZASU = 8000;
 
 const sen = (ms) => new Promise((ok) => setTimeout(ok, ms));
 
@@ -50,14 +53,21 @@ class BladGemini extends BladApi {
 
 async function jednoWywolanie(klucz, model, payload) {
   let odp;
+  const przerwij = typeof AbortController !== "undefined" ? new AbortController() : null;
+  const zegar = przerwij ? setTimeout(() => przerwij.abort(), LIMIT_CZASU) : null;
   try {
     odp = await fetch(`${API}/${encodeURIComponent(model)}:generateContent`, {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-goog-api-key": klucz },
       body: JSON.stringify(payload),
+      signal: przerwij ? przerwij.signal : undefined,
     });
   } catch (e) {
-    throw new BladGemini(502, "Nie udało się połączyć z Gemini: " + e.message, { szczegol: e.message, dalej: "ponow" });
+    const zaDlugo = e && e.name === "AbortError";
+    throw new BladGemini(502, zaDlugo ? "Gemini nie odpowiedziało w czasie." : "Nie udało się połączyć z Gemini: " + e.message,
+      { szczegol: zaDlugo ? "przekroczony czas" : e.message, dalej: zaDlugo ? "model" : "ponow" });
+  } finally {
+    if (zegar) clearTimeout(zegar);
   }
 
   const body = await odp.text();
@@ -144,7 +154,7 @@ export async function wywolajGemini(env, wiadomosci, opcje = {}, dziennik = null
         if (dziennik) dziennik.push({ model, ok: false, status: e.status || null, komunikat: e.szczegol || e.message });
         if (!(e instanceof BladGemini) || !e.dalej) throw e;
         if (e.dalej === "model" || proba === 1) break;
-        await sen(700);
+        await sen(300);
       }
     }
   }

@@ -176,6 +176,17 @@ var Awatar = {
     this._odmontuj();
   },
 
+  // Gdy lektorka mówi, jej animacja rośnie na całą szerokość ekranu, a potem
+  // wraca do zwykłego rozmiaru. Krótka zwłoka przy zmniejszaniu — między
+  // zdaniami lektora panel nie ma skakać.
+  _pelnyEkran: function (panel, wlacz) {
+    var ust = (App.stan && App.stan.user.ustawienia) || {};
+    if (ust.pelnyPrzyMowie === false || !this.robot) wlacz = false;
+    clearTimeout(this._zmniejsz);
+    if (wlacz) panel.classList.add("pelny");
+    else this._zmniejsz = setTimeout(function () { panel.classList.remove("pelny"); }, 450);
+  },
+
   ustawStan: function (stan) {
     this.stan = stan;
     if (this.robot) this.robot.ustawStan(stan);
@@ -188,7 +199,10 @@ var Awatar = {
     }
 
     var panel = document.getElementById("awatar-panel");
-    if (panel) panel.dataset.stan = stan;
+    if (panel) {
+      panel.dataset.stan = stan;
+      this._pelnyEkran(panel, stan === "mowi");
+    }
 
     var podpisy = { mowi: "mówi…", slucha: "słucha Cię…", mysli: "zastanawia się…", czeka: "Twoja kolej" };
     if (this.status) this.status.textContent = podpisy[stan] || "";

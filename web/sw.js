@@ -3,7 +3,7 @@
    Podnieś WERSJA po każdej zmianie plików, żeby telefon pobrał nowe.
    ============================================================ */
 
-var WERSJA = "angielski-ai-v29";
+var WERSJA = "angielski-ai-v30";
 
 var SZKIELET = [
   "./",

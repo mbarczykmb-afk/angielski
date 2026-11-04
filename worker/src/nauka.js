@@ -311,7 +311,9 @@ export async function czat(env, uzytkownik, dane) {
 
   const system =
     "Jesteś native speakerem i cierpliwym partnerem do rozmowy po angielsku. " +
-    `Uczeń jest Polakiem na poziomie ${poziom}.\n` +
+    `Uczeń jest Polakiem na poziomie ${poziom}. Ma na imię ${tekst(uzytkownik.nazwa, 40) || "nieznane"} — ` +
+    "rozpoznawanie mowy po angielsku przekręca polskie imiona i nazwy (np. Michał jako „me how”, " +
+    "„Michael”, Łódź jako „would she”), więc domyślaj się ich i pisz je poprawnie, po polsku.\n" +
     `SCENARIUSZ: ${tekst(dane.scenariusz, 1500) || "Swobodna rozmowa na temat: " + tekst(dane.temat, 200)}\n\n` +
     "TO JEST ROZMOWA GŁOSOWA. Uczeń SŁUCHA Twojej odpowiedzi przez głośnik i odpowiada " +
     "mikrofonem. Tekstu zwykle nie widzi. To zmienia wszystko:\n\n" +

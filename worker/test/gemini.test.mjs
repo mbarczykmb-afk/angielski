@@ -39,10 +39,14 @@ let blad = null;
 try { await wywolajGemini(env, w); } catch (e) { blad = e.message; }
 sprawdz("zły klucz → jedna próba i jasny komunikat", [adresy.length, blad], [1, "Nieprawidłowy klucz Gemini. Ustaw go ponownie w Workerze."]);
 
-udawaj([gBlad(503, "overloaded"), gBlad(503, "overloaded"), gBlad(503, "overloaded"), gBlad(503, "overloaded"), gBlad(503, "overloaded"), gBlad(503, "overloaded"), cOk]);
+udawaj([gBlad(503, "overloaded"), gBlad(503, "overloaded"), gBlad(503, "overloaded"), gBlad(503, "overloaded"), cOk]);
 sprawdz("wszystkie modele Gemini padły → turę obsługuje Claude",
   await wywolajAI(env, w, { dostawca: DOSTAWCA_GEMINI, system: "S" }), "z Claude");
 sprawdz("ostatnie zapytanie poszło do Claude", adresy[adresy.length - 1], "claude");
+
+udawaj([cOk]);
+sprawdz("po awarii Gemini kolejna tura od razu idzie do Claude (bez czekania na Google)",
+  [await wywolajAI(env, w, { dostawca: DOSTAWCA_GEMINI, system: "S" }), adresy], ["z Claude", ["claude"]]);
 
 udawaj([gBlad(404, "not found"), gOk("OK")]);
 const t = await testGemini(env);

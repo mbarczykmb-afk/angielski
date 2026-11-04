@@ -43,7 +43,7 @@ import { testGemini } from "./gemini.js";
 
 // Znacznik wersji kodu — widoczny w /api/health.
 // Pozwala sprawdzic golym okiem, ktora wersja naprawde dziala na serwerze.
-const WERSJA_KODU = "2026-09-24-gemini-zapas";
+const WERSJA_KODU = "2026-11-04-szybciej";
 import {
   rozpocznijPolaczenie,
   obsluzPowrot,

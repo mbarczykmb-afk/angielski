@@ -234,10 +234,51 @@ var Mowa = {
     return p;
   },
 
-  czasCiszy: function (tekst, pauza) {
+  czasCiszy: function (tekst, pauza, zamkniete) {
     var slowa = String(tekst || "").toLowerCase().replace(/[^a-z' ]+/g, " ").trim().split(/\s+/);
     var ostatnie = slowa[slowa.length - 1] || "";
-    return Mowa.URWANE.indexOf(ostatnie) >= 0 ? Math.round(pauza * 1.6) : pauza;
+    if (Mowa.URWANE.indexOf(ostatnie) >= 0) return Math.round(pauza * 1.6);
+    // Zdanie wygląda na skończone (przeglądarka je zamknęła, ma kilka słów) —
+    // nie każemy czekać pełnej pauzy, odpowiedź przychodzi szybciej
+    if (zamkniete && slowa.length >= 3) return Math.max(2000, Math.round(pauza * 0.4));
+    return pauza;
+  },
+
+  /**
+   * Polskie imię ucznia w angielskim rozpoznawaniu mowy wychodzi przekręcone
+   * ("Michal", "me how", "Mikhail"). Poprawiamy je w zapisie: wersję bez
+   * polskich znaków zawsze, a typowe przekręcenia — po "my name is", "I'm".
+   */
+  poprawImiona: function (tekst) {
+    var imie = App.stan && App.stan.user && App.stan.user.nazwa;
+    if (!imie || !tekst) return tekst;
+    imie = String(imie).trim().split(/\s+/)[0];
+    var bezZnakow = imie.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/ł/g, "l").replace(/Ł/g, "L");
+    var wynik = tekst;
+    if (bezZnakow.toLowerCase() !== imie.toLowerCase()) {
+      wynik = wynik.replace(new RegExp("\\b" + bezZnakow + "\\b", "gi"), imie);
+    }
+    var warianty = Mowa.PRZEKRECENIA[bezZnakow.toLowerCase()] || [];
+    warianty.forEach(function (w) {
+      var wzor = new RegExp("\\b(my name is|my name's|i'm|i am|call me|it's|this is)\\s+" + w.replace(/ /g, "\\s+") + "\\b", "gi");
+      wynik = wynik.replace(wzor, function (calosc, wstep) { return wstep + " " + imie; });
+    });
+    return wynik;
+  },
+
+  PRZEKRECENIA: {
+    michal: ["michael", "mikhail", "me how", "mi how", "mihow", "meehow", "michel"],
+    piotr: ["peter", "pyotr", "piot", "pjotr"],
+    pawel: ["pavel", "pablo", "pavel"],
+    lukasz: ["lucas", "lukas", "luka"],
+    wojciech: ["voytek", "wojtek", "voy check"],
+    krzysztof: ["christoph", "christopher", "kshishtof"],
+    malgorzata: ["margaret", "gosia"],
+    katarzyna: ["katherine", "kasia", "katrina"],
+    agnieszka: ["agnes", "anyeshka"],
+    zofia: ["sophia", "sofia"],
+    jakub: ["jacob", "kuba"],
+    mateusz: ["matthew", "mateus"],
   },
 
   URWANE: ["and", "but", "or", "so", "because", "that", "which", "who", "when", "if", "than", "then",
@@ -334,7 +375,7 @@ var Mowa = {
       var przycisk = document.getElementById("btn-mikrofon");
       if (przycisk) przycisk.classList.remove("slucha");
 
-      dotychczas = tekstCaly();
+      dotychczas = Mowa.poprawImiona(tekstCaly());
       diag.wynik = dotychczas;
       if (onKoniec) onKoniec(cokolwiekPowiedziano ? dotychczas.trim() : "");
     }
@@ -379,10 +420,11 @@ var Mowa = {
         cokolwiekPowiedziano = true;
         ostatniGlos = Date.now();
 
-        var caly = tekstCaly();
+        var caly = Mowa.poprawImiona(tekstCaly());
         onTekst(caly, false);
-        // Każde słowo odsuwa koniec; urwane zdanie dostaje więcej czasu
-        ustawTermin(Mowa.czasCiszy(caly, pauza));
+        // Każde słowo odsuwa koniec; urwane zdanie czeka dłużej, skończone krócej
+        var ostatni = zdarzenie.results[zdarzenie.results.length - 1];
+        ustawTermin(Mowa.czasCiszy(caly, pauza, !!(ostatni && ostatni.isFinal)));
       };
 
       r.onerror = function (zdarzenie) {

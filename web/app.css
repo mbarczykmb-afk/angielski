@@ -1003,3 +1003,12 @@ details.zaawansowane[open] > summary::before { content: "▾ "; }
 }
 .nf-warstwa.widoczna { opacity: 1; }
 .portret-novy.foto { border-radius: 16px; background: none; }
+
+/* Lektorka mówi: animacja na całą szerokość ekranu, opis chowa się na ten czas */
+.awatar-panel.pelny { justify-content: center; }
+.awatar-panel.pelny .awatar-opis { display: none; }
+.awatar-panel.pelny .awatar-twarz.robot {
+  width: min(calc(100vw - 28px), 460px);
+  height: min(calc(100vw - 28px), 460px);
+  flex: 0 0 auto;
+}

@@ -35,15 +35,23 @@ export function czystyKlucz(wartosc) {
  * Kieruje zapytanie do wybranego dostawcy — reszta aplikacji nie musi
  * wiedzieć, który model odpowiada.
  */
+// Gdy Gemini zawiedzie, przez jakiś czas od razu idziemy do Claude — inaczej
+// każda tura czekałaby na kolejne nieudane próby, zanim padnie odpowiedź
+let geminiPomijajDo = 0;
+const PRZERWA_GEMINI = 10 * 60 * 1000;
+
 export async function wywolajAI(env, wiadomosci, opcje = {}) {
   if (opcje.dostawca === DOSTAWCA_GEMINI) {
+    const naClaude = { ...opcje, dostawca: undefined, model: MODEL_ROZMOWA, effort: undefined };
+    if (Date.now() < geminiPomijajDo) return wywolajClaude(env, wiadomosci, naClaude);
     try {
       return await wywolajGemini(env, wiadomosci, opcje);
     } catch (e) {
       // Rozmowa nie może stanąć przez Google. Tę turę obsługuje Claude Haiku,
       // a co dokładnie się stało, pokaże przycisk "Sprawdź Gemini" w Ustawieniach.
       console.warn("Gemini zawiodło, tura idzie przez Claude:", e.message);
-      return wywolajClaude(env, wiadomosci, { ...opcje, dostawca: undefined, model: MODEL_ROZMOWA, effort: undefined });
+      geminiPomijajDo = Date.now() + PRZERWA_GEMINI;
+      return wywolajClaude(env, wiadomosci, naClaude);
     }
   }
   return wywolajClaude(env, wiadomosci, opcje);

@@ -35,6 +35,7 @@ function rysujUstawienia() {
     przelacznik("ust-glos", "Lektor czyta odpowiedzi", ust.glos !== false) +
     przelacznik("ust-bez-rak", "Rozmowa bez rąk", ust.bezRak !== false) +
     przelacznik("ust-tryb-sluchania", "Tekst zakryty do dotknięcia", ust.trybSluchania !== false) +
+    przelacznik("ust-pelny-ekran", "Lektorka na całą szerokość, gdy mówi", ust.pelnyPrzyMowie !== false) +
 
     '<p class="mini" style="margin-top:8px">Bez rąk: mikrofon włącza się sam, gdy lektor skończy mówić. ' +
     "Tekst zakryty: najpierw słuchasz, a zapis odsłaniasz dotknięciem dopiero, gdy czegoś nie wychwycisz.</p>" +
@@ -223,6 +224,7 @@ function podepnijUstawienia() {
       mikrofon: true,
       bezRak: document.getElementById("ust-bez-rak").checked,
       trybSluchania: document.getElementById("ust-tryb-sluchania").checked,
+      pelnyPrzyMowie: document.getElementById("ust-pelny-ekran").checked,
       awatarStyl: document.getElementById("pole-awatar").value,
       awatarV2: true,
       awatarV3: true,
@@ -246,7 +248,7 @@ function podepnijUstawienia() {
     }
   }
 
-  ["ust-glos", "ust-bez-rak", "ust-tryb-sluchania", "pole-awatar", "pole-model", "pole-cel-dzienny"].forEach(function (id) {
+  ["ust-glos", "ust-bez-rak", "ust-tryb-sluchania", "ust-pelny-ekran", "pole-awatar", "pole-model", "pole-cel-dzienny"].forEach(function (id) {
     document.getElementById(id).onchange = zapisz;
   });
 
