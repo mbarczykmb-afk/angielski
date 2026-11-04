@@ -40,7 +40,7 @@ function rysujUstawienia() {
     "Tekst zakryty: najpierw słuchasz, a zapis odsłaniasz dotknięciem dopiero, gdy czegoś nie wychwycisz.</p>" +
     '<label for="pole-awatar">Lektor na ekranie</label>' +
     '<select id="pole-awatar">' +
-    [["android", "Android 3D — Nova"], ["robot", "Robot 3D — Nova"], ["twarz", "Rysowana twarz — Emma"], ["brak", "Bez twarzy"]].map(function (o) {
+    [["nova", "Nova — awatar 3D (polecany)"], ["android", "Porcelanowy android 3D"], ["robot", "Robot 3D"], ["twarz", "Rysowana twarz — Emma"], ["brak", "Bez twarzy"]].map(function (o) {
       return '<option value="' + o[0] + '"' + (Awatar.styl() === o[0] ? " selected" : "") + ">" + o[1] + "</option>";
     }).join("") + "</select>" +
     '<label for="pole-pauza">Ile ciszy kończy Twoją wypowiedź: <span id="etykieta-pauza">' +
@@ -219,6 +219,7 @@ function podepnijUstawienia() {
       bezRak: document.getElementById("ust-bez-rak").checked,
       trybSluchania: document.getElementById("ust-tryb-sluchania").checked,
       awatarStyl: document.getElementById("pole-awatar").value,
+      awatarV2: true,
       pauzaMs: Number(document.getElementById("pole-pauza").value),
       pauzaV2: true,
       tempoMowy: Number(document.getElementById("pole-tempo").value),

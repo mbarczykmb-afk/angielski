@@ -1,0 +1,22 @@
+Model lektorki Nova (nova.vrm.gz)
+==================================
+
+Źródło: "VRM1_Constraint_Twist_Sample" z repozytorium pixiv/three-vrm
+(packages/three-vrm/examples/models/VRM1_Constraint_Twist_Sample.vrm).
+Autor: pixiv Inc. — (c) 2022 pixiv Inc.
+Licencja: VRM Public License 1.0 — https://vrm.dev/licenses/1.0/
+
+Warunki zapisane w pliku modelu (VRMC_vrm.meta):
+- avatarPermission: everyone — każdy może używać awatara
+- commercialUsage: corporation — dozwolone także komercyjnie
+- allowRedistribution: true — wolno rozpowszechniać
+- modification: allowModificationRedistribution — wolno zmieniać
+  i rozpowszechniać zmienioną wersję
+- creditNotation: unnecessary — podanie autora nie jest wymagane
+  (podajemy je mimo to)
+
+Zmiany w tej wersji (tools/nova-vrm.sh, tools/przebuduj_vrm.py):
+- włosy przebarwione na platynowe, tęczówki na turkusowe, ubranie na granatowe
+- tekstury zmniejszone i zapisane jako JPEG, usunięte mapy normalnych
+  i miniatura — plik z 10,7 MB do 4,7 MB (1,3 MB po kompresji gzip)
+- dane autora i licencji w pliku modelu pozostały bez zmian

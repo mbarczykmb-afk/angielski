@@ -30,14 +30,17 @@ var Awatar = {
   _powrot: null,     // uchwyt powrotu do neutralnej miny
 
   /**
-   * Który lektor na ekranie: "android" (twarz 3D), "robot" (robot 3D),
-   * "twarz" (rysowana Emma) albo "brak".
+   * Który lektor na ekranie: "nova" (awatar 3D VRM), "android" (porcelanowa
+   * twarz 3D), "robot" (robot 3D), "twarz" (rysowana Emma) albo "brak".
    * Starsze ustawienia miały tylko przełącznik awatar: true/false.
    */
   styl: function () {
     var ust = (App.stan && App.stan.user.ustawienia) || {};
-    if (["android", "robot", "twarz", "brak"].indexOf(ust.awatarStyl) >= 0) return ust.awatarStyl;
-    return ust.awatar === false ? "brak" : "android";
+    // "android" był domyślny i zapisywał się przy każdej zmianie ustawień —
+    // kto go nie wybrał świadomie (awatarV2), dostaje nową Novę
+    if (ust.awatarStyl === "android" && !ust.awatarV2) return "nova";
+    if (["nova", "android", "robot", "twarz", "brak"].indexOf(ust.awatarStyl) >= 0) return ust.awatarStyl;
+    return ust.awatar === false ? "brak" : "nova";
   },
 
   wlaczony: function () {
@@ -64,6 +67,8 @@ var Awatar = {
 
     var egzaminator = wariant === "egzaminator";
     var styl = this.styl();
+    // Model VRM jest tylko kobiecy — egzaminatora pokazuje porcelanowy Unit X
+    if (styl === "nova" && (egzaminator || !NovaVRM.dostepny())) styl = "android";
     if ((styl === "android" || styl === "robot") && !Robot3D.dostepny()) styl = "twarz";
     var klucz = (egzaminator ? "egzaminator" : "lektor") + "-" + styl;
 
@@ -74,8 +79,9 @@ var Awatar = {
     panel.dataset.wariant = klucz;
     panel.hidden = false;
 
-    if (styl === "android" || styl === "robot") {
-      this._pokazRobota(panel, egzaminator, styl === "android" ? Android3D : Robot3D);
+    if (styl === "nova" || styl === "android" || styl === "robot") {
+      var silniki = { nova: [NovaVRM, Android3D], android: [Android3D], robot: [Robot3D] }[styl];
+      this._pokazRobota(panel, egzaminator, silniki);
     } else {
       this._pokazTwarz(panel, egzaminator);
     }
@@ -100,7 +106,8 @@ var Awatar = {
 
   // Robot wczytuje się asynchronicznie (biblioteka 3D). Do tego czasu panel
   // pokazuje pustą, podświetloną tarczę, a gdy coś pójdzie nie tak — rysowaną twarz.
-  _pokazRobota: function (panel, egzaminator, silnik) {
+  // silniki — lista do wypróbowania po kolei; gdy wszystkie zawiodą, rysowana twarz
+  _pokazRobota: function (panel, egzaminator, silniki) {
     var self = this;
     var proba = ++this._proba;
 
@@ -110,20 +117,28 @@ var Awatar = {
     this.ustawStan(this.stan || "czeka");
     this._powiekszanie(panel);
 
-    silnik.utworz(panel.querySelector(".awatar-twarz"), egzaminator ? "egzaminator" : "lektor")
-      .then(function (robot) {
-        // W międzyczasie panel mógł zostać przerysowany albo schowany
-        if (proba !== self._proba) { robot.zniszcz(); return; }
-        self.robot = robot;
-        robot.ustawEmocje(self.emocja);
-        robot.ustawStan(self.stan);
-      })
-      .catch(function (e) {
-        console.warn("Robot 3D nie wystartował, zostaje rysowana twarz:", e);
-        if (proba !== self._proba) return;
+    var miejsce = panel.querySelector(".awatar-twarz");
+    function sprobuj(i) {
+      if (i >= silniki.length) {
         panel.dataset.wariant = (egzaminator ? "egzaminator" : "lektor") + "-twarz";
         self._pokazTwarz(panel, egzaminator);
-      });
+        return;
+      }
+      silniki[i].utworz(miejsce, egzaminator ? "egzaminator" : "lektor")
+        .then(function (robot) {
+          // W międzyczasie panel mógł zostać przerysowany albo schowany
+          if (proba !== self._proba) { robot.zniszcz(); return; }
+          self.robot = robot;
+          robot.ustawEmocje(self.emocja);
+          robot.ustawStan(self.stan);
+        })
+        .catch(function (e) {
+          console.warn("Awatar 3D nie wystartował, próbuję następnego:", e);
+          if (proba !== self._proba) return;
+          sprobuj(i + 1);
+        });
+    }
+    sprobuj(0);
   },
 
   // Dotknięcie twarzy powiększa ją albo zmniejsza; wybór pamięta ta przeglądarka
