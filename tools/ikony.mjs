@@ -128,7 +128,7 @@ async function renderujTwarz(przegladarka) {
   await strona.goto(`http://localhost:${serwer.address().port}/twarz.html`);
   await strona.evaluate(async () => {
     const r = await NovaVRM.utworz(document.getElementById("t"), "lektor");
-    r.ustawEmocje("radosc");
+    r.ustawEmocje("zaciekawienie");
     r.ustawStan("czeka");
   });
   // Czas na wygładzenie miny; zrzut robimy między mrugnięciami

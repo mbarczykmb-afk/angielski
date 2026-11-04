@@ -67,6 +67,7 @@ async function zbudujNoveVRM(THREE, GLTFLoader, VRMlib, dane, kontener) {
   VRMlib.VRMUtils.combineSkeletons(gltf.scene);
   VRMlib.VRMUtils.rotateVRM0(vrm);
   vrm.scene.traverse(function (o) { o.frustumCulled = false; });
+  doroslaTwarz(vrm, NOVA_PROPORCJE);
 
   var rozmiar = Math.max(60, kontener.clientWidth || 86);
   var renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true, powerPreference: "low-power" });
@@ -94,18 +95,30 @@ async function zbudujNoveVRM(THREE, GLTFLoader, VRMlib, dane, kontener) {
   kosc("leftLowerArm").rotation.z = -0.15;
   kosc("rightLowerArm").rotation.z = 0.15;
 
-  /* Słuchawki AI: pałąk nad głową i nauszniki ze świecącym pierścieniem */
+  /* Dorosłe proporcje: dłuższa szyja i mniejsza głowa względem ciała
+     (duża głowa na krótkiej szyi to typowa sylwetka postaci-dziecka) */
+  var P = NOVA_PROPORCJE;
+  var surowaGlowa = vrm.humanoid.getRawBoneNode("head");
+  surowaGlowa.position.y += P.szyja;
+  surowaGlowa.scale.setScalar(P.glowa);
+
+  /* Słuchawki AI: pałąk nad głową i nauszniki ze świecącym pierścieniem.
+     Grupa ma tę samą skalę i przesunięcie co głowa, więc leżą na włosach. */
   var glowaK = kosc("head");
+  var sluchawki = new THREE.Group();
+  sluchawki.position.y = P.szyja;
+  sluchawki.scale.setScalar(P.glowa);
+  glowaK.add(sluchawki);
   var mSwiatlo = new THREE.MeshBasicMaterial({ color: 0x5ff3ff, toneMapped: false, transparent: true, opacity: 0.9 });
   var mObudowa = new THREE.MeshStandardMaterial({ color: 0xeef2f7, metalness: 0.55, roughness: 0.22 });
   var mSrodek = new THREE.MeshStandardMaterial({ color: 0x1a2233, metalness: 0.4, roughness: 0.4 });
   var R0 = 0.118, Y0 = 0.1, Z0 = -0.005;
   var palak = new THREE.Mesh(new THREE.TorusGeometry(R0, 0.006, 10, 64, Math.PI), mObudowa);
   palak.position.set(0, Y0, Z0);
-  glowaK.add(palak);
+  sluchawki.add(palak);
   var linia = new THREE.Mesh(new THREE.TorusGeometry(R0 + 0.0045, 0.0018, 6, 64, Math.PI), mSwiatlo);
   linia.position.copy(palak.position);
-  glowaK.add(linia);
+  sluchawki.add(linia);
   [-1, 1].forEach(function (s) {
     var g = new THREE.Group();
     g.position.set(s * R0, Y0 - 0.005, Z0);
@@ -119,16 +132,36 @@ async function zbudujNoveVRM(THREE, GLTFLoader, VRMlib, dane, kontener) {
     var srodek = new THREE.Mesh(new THREE.CircleGeometry(0.012, 32), mSrodek);
     srodek.position.z = 0.0092;
     g.add(srodek);
-    glowaK.add(g);
+    sluchawki.add(g);
   });
+
+  /* Naszyjnik: cienki łańcuszek i świecący wisiorek */
+  var szyjaK = kosc("neck");
+  var mLancuszek = new THREE.MeshStandardMaterial({ color: 0xe9eef5, metalness: 0.9, roughness: 0.2 });
+  // Choker: cienka obręcz na szyi ze świecącą linią i małym wisiorkiem z przodu
+  var lancuszek = new THREE.Mesh(new THREE.TorusGeometry(P.naszyjnikR, 0.0028, 8, 64), mLancuszek);
+  lancuszek.rotation.x = Math.PI / 2 + 0.12;
+  lancuszek.scale.set(1, 0.9, 1);
+  lancuszek.position.set(0, P.naszyjnikY, 0.004);
+  szyjaK.add(lancuszek);
+  var swiecaca = new THREE.Mesh(new THREE.TorusGeometry(P.naszyjnikR + 0.0012, 0.0011, 6, 64), mSwiatlo);
+  swiecaca.rotation.copy(lancuszek.rotation);
+  swiecaca.scale.copy(lancuszek.scale);
+  swiecaca.position.copy(lancuszek.position).add(new THREE.Vector3(0, -0.003, 0));
+  szyjaK.add(swiecaca);
+  var wisiorek = new THREE.Mesh(new THREE.OctahedronGeometry(0.006, 0), mSwiatlo);
+  wisiorek.scale.set(0.8, 1.3, 0.5);
+  wisiorek.position.set(0, P.naszyjnikY - 0.012, P.naszyjnikR * 0.9 + 0.006);
+  szyjaK.add(wisiorek);
 
   // Kamera celuje w twarz: kadr głowa i ramiona
   vrm.update(0);
   var pGlowy = new THREE.Vector3();
   glowaK.getWorldPosition(pGlowy);
   var kamera = new THREE.PerspectiveCamera(18, 1, 0.1, 20);
-  kamera.position.set(pGlowy.x + 0.06, pGlowy.y + 0.06, pGlowy.z + 1.45);
-  kamera.lookAt(pGlowy.x, pGlowy.y - 0.025, pGlowy.z);
+  // Ujęcie lekko z boku (trzy czwarte) i odrobinę z dołu — portretowe, dorosłe
+  kamera.position.set(pGlowy.x + P.kameraX, pGlowy.y + P.kameraY, pGlowy.z + P.kameraZ);
+  kamera.lookAt(pGlowy.x + P.celX, pGlowy.y + P.celY, pGlowy.z);
 
   // Oczy patrzą w kamerę; cel lekko się przesuwa (drobne ruchy oczu, „myślenie”)
   var celWzroku = new THREE.Object3D();
@@ -273,4 +306,86 @@ async function zbudujNoveVRM(THREE, GLTFLoader, VRMlib, dane, kontener) {
       if (renderer.domElement.parentNode) renderer.domElement.parentNode.removeChild(renderer.domElement);
     },
   };
+}
+
+/* Proporcje i kadr. Model wyjściowy to postać nastoletnia w stylu anime;
+   te ustawienia robią z niej dorosłą kobietę. */
+var NOVA_PROPORCJE = {
+  oczyX: 0.8, oczyY: 0.7,    // mniejsze, bardziej migdałowe oczy
+  zuchwa: 0.3,               // dolna część twarzy dłuższa — wyraźniejsza broda
+  szyja: 0.022,              // dłuższa szyja (m)
+  glowa: 0.9,                // mniejsza głowa względem ciała
+  naszyjnikR: 0.043, naszyjnikY: 0.03,
+  kameraX: 0.42, kameraY: 0.0, kameraZ: 1.38, celX: 0.0, celY: -0.03,
+};
+
+// Zmniejsza oczy (białka, tęczówki, rzęsy, odblaski) wokół środka każdego oka —
+// razem z ich kształtami mimiki, żeby mruganie dalej pasowało
+function doroslaTwarz(vrm, P) {
+  var oczy = [], twarz = [];
+  vrm.scene.traverse(function (o) {
+    if (!o.isMesh || !o.geometry) return;
+    var m = Array.isArray(o.material) ? o.material[0] : o.material;
+    var nazwa = (m && m.name) || "";
+    if (/EyeWhite|EyeIris|EyeHighlight|FaceEyeline/.test(nazwa)) oczy.push({ mesh: o, biale: /EyeWhite/.test(nazwa) });
+    if (/Face_00_SKIN|FaceMouth/.test(nazwa)) twarz.push(o);
+  });
+  if (!oczy.length) return;
+
+  // Środki oczu z białek: osobno lewe i prawe
+  var srodki = { "-1": [0, 0, 0, 0], "1": [0, 0, 0, 0] };
+  oczy.filter(function (e) { return e.biale; }).forEach(function (e) {
+    var poz = e.mesh.geometry.attributes.position;
+    for (var i = 0; i < poz.count; i++) {
+      var s = srodki[poz.getX(i) < 0 ? "-1" : "1"];
+      s[0] += poz.getX(i); s[1] += poz.getY(i); s[2] += poz.getZ(i); s[3]++;
+    }
+  });
+  Object.keys(srodki).forEach(function (k) { var s = srodki[k]; if (s[3]) { s[0] /= s[3]; s[1] /= s[3]; s[2] /= s[3]; } });
+
+  var przerobione = new Set();
+  oczy.forEach(function (e) {
+    var geo = e.mesh.geometry;
+    if (przerobione.has(geo)) return;
+    przerobione.add(geo);
+    var poz = geo.attributes.position;
+    var strony = new Int8Array(poz.count);
+    for (var i = 0; i < poz.count; i++) {
+      var s = srodki[poz.getX(i) < 0 ? "-1" : "1"];
+      strony[i] = poz.getX(i) < 0 ? -1 : 1;
+      poz.setX(i, s[0] + (poz.getX(i) - s[0]) * P.oczyX);
+      poz.setY(i, s[1] + (poz.getY(i) - s[1]) * P.oczyY);
+    }
+    poz.needsUpdate = true;
+    // Kształty mimiki są względne (przesunięcia) — skalujemy je tak samo
+    (geo.morphAttributes.position || []).forEach(function (cel) {
+      for (var j = 0; j < cel.count; j++) {
+        cel.setX(j, cel.getX(j) * P.oczyX);
+        cel.setY(j, cel.getY(j) * P.oczyY);
+      }
+      cel.needsUpdate = true;
+    });
+    geo.computeBoundingSphere();
+  });
+
+  // Dłuższa żuchwa: punkty skóry poniżej linii nosa schodzą w dół proporcjonalnie
+  // do odległości od niej. Szyja i brzeg twarzy (wysoko z tyłu) zostają na miejscu.
+  var oczyY = (srodki["-1"][1] + srodki["1"][1]) / 2;
+  var nosY = oczyY - 0.035;
+  twarz.forEach(function (mesh) {
+    var geo = mesh.geometry;
+    if (przerobione.has(geo)) return;
+    przerobione.add(geo);
+    var poz = geo.attributes.position;
+    var przod = srodki["1"][2];
+    for (var i = 0; i < poz.count; i++) {
+      var y = poz.getY(i);
+      if (y >= nosY) continue;
+      // Z tyłu głowy (za uszami) nic nie ruszamy — tam twarz łączy się z szyją
+      var zPrzod = Math.max(0, Math.min(1, (poz.getZ(i) - (przod - 0.09)) / 0.06));
+      poz.setY(i, y - (nosY - y) * P.zuchwa * zPrzod);
+    }
+    poz.needsUpdate = true;
+    geo.computeBoundingSphere();
+  });
 }

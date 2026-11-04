@@ -16,7 +16,10 @@ Warunki zapisane w pliku modelu (VRMC_vrm.meta):
   (podajemy je mimo to)
 
 Zmiany w tej wersji (tools/nova-vrm.sh, tools/przebuduj_vrm.py):
-- włosy przebarwione na platynowe, tęczówki na turkusowe, ubranie na granatowe
+- włosy przebarwione na platynowe, tęczówki na turkusowe, ubranie na grafitowe
+- dorosła twarz: pełne usta z delikatną szminką zamiast kreski, mniejsze rumieńce
+  (tekstura), a w aplikacji (web/js/nova-vrm.js) mniejsze oczy, dłuższa żuchwa
+  i szyja, mniejsza głowa względem ciała
 - tekstury zmniejszone i zapisane jako JPEG, usunięte mapy normalnych
   i miniatura — plik z 10,7 MB do 4,7 MB (1,3 MB po kompresji gzip)
 - dane autora i licencji w pliku modelu pozostały bez zmian
