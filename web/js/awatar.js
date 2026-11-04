@@ -30,17 +30,18 @@ var Awatar = {
   _powrot: null,     // uchwyt powrotu do neutralnej miny
 
   /**
-   * Który lektor na ekranie: "nova" (awatar 3D VRM), "android" (porcelanowa
-   * twarz 3D), "robot" (robot 3D), "twarz" (rysowana Emma) albo "brak".
+   * Który lektor na ekranie: "foto" (animacja ze zdjęć), "nova" (awatar 3D
+   * VRM), "android" (porcelanowa twarz 3D), "robot" (robot 3D), "twarz"
+   * (rysowana Emma) albo "brak".
    * Starsze ustawienia miały tylko przełącznik awatar: true/false.
    */
   styl: function () {
     var ust = (App.stan && App.stan.user.ustawienia) || {};
-    // "android" był domyślny i zapisywał się przy każdej zmianie ustawień —
-    // kto go nie wybrał świadomie (awatarV2), dostaje nową Novę
-    if (ust.awatarStyl === "android" && !ust.awatarV2) return "nova";
-    if (["nova", "android", "robot", "twarz", "brak"].indexOf(ust.awatarStyl) >= 0) return ust.awatarStyl;
-    return ust.awatar === false ? "brak" : "nova";
+    // Wcześniejsze domyślne style zapisywały się przy każdej zmianie ustawień —
+    // kto nie wybrał świadomie po wejściu animacji ze zdjęć (awatarV3), dostaje ją
+    if ((ust.awatarStyl === "android" || ust.awatarStyl === "nova") && !ust.awatarV3) return "foto";
+    if (["foto", "nova", "android", "robot", "twarz", "brak"].indexOf(ust.awatarStyl) >= 0) return ust.awatarStyl;
+    return ust.awatar === false ? "brak" : "foto";
   },
 
   wlaczony: function () {
@@ -67,8 +68,9 @@ var Awatar = {
 
     var egzaminator = wariant === "egzaminator";
     var styl = this.styl();
-    // Model VRM jest tylko kobiecy — egzaminatora pokazuje porcelanowy Unit X
-    if (styl === "nova" && (egzaminator || !NovaVRM.dostepny())) styl = "android";
+    // Lektorki są kobiece — egzaminatora pokazuje porcelanowy Unit X
+    if ((styl === "foto" || styl === "nova") && egzaminator) styl = "android";
+    if (styl === "nova" && !NovaVRM.dostepny()) styl = "android";
     if ((styl === "android" || styl === "robot") && !Robot3D.dostepny()) styl = "twarz";
     var klucz = (egzaminator ? "egzaminator" : "lektor") + "-" + styl;
 
@@ -79,8 +81,8 @@ var Awatar = {
     panel.dataset.wariant = klucz;
     panel.hidden = false;
 
-    if (styl === "nova" || styl === "android" || styl === "robot") {
-      var silniki = { nova: [NovaVRM, Android3D], android: [Android3D], robot: [Robot3D] }[styl];
+    if (styl === "foto" || styl === "nova" || styl === "android" || styl === "robot") {
+      var silniki = { foto: [NovaFoto, NovaVRM, Android3D], nova: [NovaVRM, Android3D], android: [Android3D], robot: [Robot3D] }[styl];
       this._pokazRobota(panel, egzaminator, silniki);
     } else {
       this._pokazTwarz(panel, egzaminator);

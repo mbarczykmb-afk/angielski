@@ -1,3 +1,6 @@
+// UWAGA: ikony aplikacji (ikona-192/512, maskowalna) pochodzą teraz z Animacja/Ikona.png —
+// robi je tools/awatar-foto.sh. Ten generator nadpisałby je ikoną z Novą 3D.
+
 // Generator ikon Angielski AI.
 //
 // Źródłem jest rysunek SVG poniżej — PNG-i renderuje z niego Chromium, więc

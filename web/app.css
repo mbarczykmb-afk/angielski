@@ -992,3 +992,14 @@ details.zaawansowane[open] > summary::before { content: "▾ "; }
 .karta.bohater.z-nova .etykieta, .karta.bohater.z-nova h2, .karta.bohater.z-nova > .podpis { padding-right: 100px; }
 .karta.bohater.srodek .portret-novy { position: static; display: block; margin: 0 auto 6px; }
 .nova-mowi { font-size: 13px; color: var(--zielony2); margin: 8px 0 12px; font-style: italic; }
+
+/* Nova ze zdjęć: kadr od piersi w górę — zaokrąglony kwadrat zamiast koła,
+   żeby nie przycinać ramion; dwie warstwy przenikają się przy zmianie miny */
+.awatar-twarz.robot.foto { border-radius: 18px; background: #0a1230; box-shadow: 0 0 0 1px rgba(95, 160, 255, .25), 0 6px 22px rgba(40, 90, 255, .25); }
+.nf-warstwa {
+  position: absolute; inset: 0;
+  background-repeat: no-repeat;
+  opacity: 0; transition: opacity .18s ease;
+}
+.nf-warstwa.widoczna { opacity: 1; }
+.portret-novy.foto { border-radius: 16px; background: none; }

@@ -193,6 +193,9 @@ function odmianaDni(n) {
 
 // Portret lektorki na ekranie głównym — od pierwszego ekranu widać, z kim się rozmawia
 function portretNovy() {
-  if (typeof Awatar === "undefined" || Awatar.styl() !== "nova") return "";
-  return '<img class="portret-novy" src="./icons/nova.webp" alt="" aria-hidden="true" width="96" height="96">';
+  if (typeof Awatar === "undefined") return "";
+  var styl = Awatar.styl();
+  if (styl === "foto") return '<img class="portret-novy foto" src="./awatar/portret.webp" alt="" aria-hidden="true" width="96" height="96">';
+  if (styl === "nova") return '<img class="portret-novy" src="./icons/nova.webp" alt="" aria-hidden="true" width="96" height="96">';
+  return "";
 }
