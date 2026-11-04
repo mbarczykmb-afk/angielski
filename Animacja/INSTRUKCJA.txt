@@ -1,0 +1,12 @@
+NOWA WERSJA AVATARA — KADR OD PIERSI W GÓRĘ
+
+Te pliki zastępują poprzednie assety. Każdy PNG jest poziomym sprite stripem 1024×256 px, zawierającym 4 klatki 256×256 px. Postać jest pokazana od piersi w górę, z widocznymi ramionami i mikrofonem.
+
+1. Skopiuj sześć plików PNG do public/assets/tutor/ i NADPISZ poprzednie pliki o tych samych nazwach.
+2. Zachowaj nazwy i mapowanie stanów w komponencie.
+3. Sprawdź, czy kontener avatara nie przycina dolnej części postaci. Dla pełnego kadru ustaw kwadratowy viewport i object-fit: contain / background-size: 400% 100% odpowiednio do implementacji sprite strip.
+4. Nie używaj object-fit: cover na pojedynczym sprite stripie — może obciąć ramiona i klatkę piersiową.
+5. Sprawdź cache przeglądarki; po podmianie assetów wykonaj twarde odświeżenie lub dodaj wersjonowanie URL.
+6. Nie zmieniaj logiki audio ani stanów emocji — wymieniamy tylko grafikę i ewentualne kadrowanie kontenera.
+
+Stany: listening, encouraging, question, confirmation, surprise, frustrated.
