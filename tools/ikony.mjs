@@ -98,7 +98,7 @@ function rysunekZTwarza({ zaokraglenie, skala, twarz }) {
   <rect width="512" height="512" rx="${zaokraglenie}" fill="url(#tlo)"/>
   <rect width="512" height="512" rx="${zaokraglenie}" fill="url(#poswiata)"/>
   <g transform="translate(256 256) scale(${skala}) translate(-256 -256)">
-    <image href="data:image/png;base64,${twarz}" x="-40" y="-22" width="600" height="600" filter="url(#cien)"/>
+    <image href="data:image/png;base64,${twarz}" x="-24" y="10" width="560" height="560" filter="url(#cien)"/>
     <g filter="url(#cien)">
       <path fill="#ffffff" d="M372 350 H468 A26 26 0 0 1 494 376 V432 A26 26 0 0 1 468 458
         H412 L384 482 A4 4 0 0 1 377 479 V458 H372 A26 26 0 0 1 346 432 V376 A26 26 0 0 1 372 350 Z"/>
@@ -108,7 +108,7 @@ function rysunekZTwarza({ zaokraglenie, skala, twarz }) {
 </svg>`;
 }
 
-// Renderuje Novę tym samym kodem co aplikacja (web/js/android3d.js) —
+// Renderuje Novę tym samym kodem co aplikacja (web/js/nova-vrm.js) —
 // uśmiechniętą, z otwartymi oczami, na przezroczystym tle.
 async function renderujTwarz(przegladarka) {
   const serwer = http.createServer((req, res) => {
@@ -116,7 +116,7 @@ async function renderujTwarz(przegladarka) {
     if (u === "/twarz.html") {
       res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
       return res.end('<!doctype html><body style="margin:0;background:transparent"><div id="t" style="width:640px;height:640px"></div>' +
-        '<script src="/js/robot3d.js"></script><script src="/js/vendor/twarz-mediapipe.js"></script><script src="/js/android3d.js"></script>');
+        '<script src="/js/robot3d.js"></script><script src="/js/nova-vrm.js"></script>');
     }
     const plik = path.join(WEB, u);
     if (!plik.startsWith(WEB) || !fs.existsSync(plik)) { res.writeHead(404); return res.end(); }
@@ -127,7 +127,7 @@ async function renderujTwarz(przegladarka) {
   const strona = await przegladarka.newPage({ viewport: { width: 640, height: 640 } });
   await strona.goto(`http://localhost:${serwer.address().port}/twarz.html`);
   await strona.evaluate(async () => {
-    const r = await Android3D.utworz(document.getElementById("t"), "lektor");
+    const r = await NovaVRM.utworz(document.getElementById("t"), "lektor");
     r.ustawEmocje("radosc");
     r.ustawStan("czeka");
   });
@@ -139,10 +139,21 @@ async function renderujTwarz(przegladarka) {
   return png.toString("base64");
 }
 
+// Chromium z Playwrighta — numer wersji w katalogu zmienia się z aktualizacjami
+function znajdzChromium() {
+  const baza = "/opt/pw-browsers";
+  for (const k of fs.existsSync(baza) ? fs.readdirSync(baza).filter((d) => /^chromium-\d+$/.test(d)).sort().reverse() : []) {
+    for (const sciezka of ["chrome-linux64/chrome", "chrome-linux/chrome"]) {
+      if (fs.existsSync(path.join(baza, k, sciezka))) return path.join(baza, k, sciezka);
+    }
+  }
+  return undefined;
+}
+
 async function main() {
   const { chromium } = await import("playwright-core");
   const przegladarka = await chromium.launch({
-    executablePath: process.argv[2] || "/opt/pw-browsers/chromium-1194/chrome-linux/chrome",
+    executablePath: process.argv[2] || znajdzChromium(),
     args: ["--no-proxy-server", "--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--ignore-gpu-blocklist"],
   });
   const twarz = await renderujTwarz(przegladarka);

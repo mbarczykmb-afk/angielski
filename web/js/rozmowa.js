@@ -86,7 +86,12 @@ function sluchajUcznia() {
         ustawPodpowiedz("");
         App.odbierzWypowiedz(koncowy.trim(), Math.round((Date.now() - poczatek) / 1000));
       } else {
-        ustawPodpowiedz("Nie dosłyszałem — dotknij mikrofonu i powiedz jeszcze raz.");
+        // Po odmowie dostępu "nie dosłyszałem" wprowadzałoby w błąd — mówimy, co zrobić
+        ustawPodpowiedz(Mowa.ostatniBlad === "zgoda"
+          ? "Mikrofon jest zablokowany — włącz go: kłódka przy adresie → Mikrofon → Zezwól."
+          : Mowa.ostatniBlad === "siec"
+            ? "Rozpoznawanie mowy potrzebuje internetu — sprawdź połączenie i dotknij mikrofonu."
+            : "Nie dosłyszałem — dotknij mikrofonu i powiedz jeszcze raz.");
       }
     }
   );
@@ -134,11 +139,11 @@ function rysujRozmowe() {
     // widać postęp i wiadomo, kiedy rozmowę można uczciwie zakończyć.
     // Starsze lekcje zapisane przed tą zmianą mają tylko jedno zdanie zadania.
     ((l.cele || []).length
-      ? "<b>Your goals</b>" + '<ul class="cele" id="lista-celow">' + listaCelow(l.cele) + "</ul>"
+      ? "<b>Twoje cele</b>" + '<ul class="cele" id="lista-celow">' + listaCelow(l.cele) + "</ul>"
       : (l.zadanieUcznia ? "<p><b>Your task:</b> " + esc(l.zadanieUcznia) + "</p>" : "")) +
     (l.wskazowka ? '<p class="podpis" style="margin-top:8px">' + ik("cel") + " " + esc(l.wskazowka) + "</p>" : "") +
 
-    "<details style='margin-top:10px'><summary>Words for today (" + (l.slownictwo || []).length + ")</summary>" +
+    "<details style='margin-top:10px'><summary>Słówka na dziś (" + (l.slownictwo || []).length + ")</summary>" +
     (l.slownictwo || []).map(function (s) {
       return '<div class="pozycja"><div class="tresc"><b>' + esc(s.en) + "</b>" +
         "<small>" + esc(s.pl) + (s.przyklad ? " · " + esc(s.przyklad) : "") + "</small></div>" +
@@ -146,7 +151,7 @@ function rysujRozmowe() {
     }).join("") + "</details>" +
 
     ((l.struktury || []).length
-      ? "<details><summary>Phrases to use</summary>" +
+      ? "<details><summary>Zwroty do użycia</summary>" +
         (l.struktury || []).map(function (s) {
           return '<div class="pozycja"><div class="tresc"><b>' + esc(s) + "</b></div>" +
             '<button class="btn-cichy" data-mow="' + esc(s) + '" aria-label="Posłuchaj">' + ik("glosnik") + "</button></div>";
@@ -154,7 +159,7 @@ function rysujRozmowe() {
       : "") +
 
     ((l.pytaniaPomocnicze || []).length
-      ? "<details><summary>Stuck? Try these</summary>" +
+      ? "<details><summary>Nie wiesz, co powiedzieć? Spróbuj tak</summary>" +
         (l.pytaniaPomocnicze || []).map(function (p) {
           return '<div class="pozycja"><div class="tresc">' + esc(p) + "</div>" +
             '<button class="btn-cichy" data-mow="' + esc(p) + '" aria-label="Posłuchaj">' + ik("glosnik") + "</button></div>";

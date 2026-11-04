@@ -291,6 +291,7 @@ var Mowa = {
     // Android przysyła kolejne wersje tego samego zdania jako osobne wyniki
     var narastajaco = /Android/i.test(navigator.userAgent || "");
     // Surowy zapis tego, co przysłała przeglądarka — widać go w Więcej
+    Mowa.ostatniBlad = null;
     var diag = Mowa.diagnostyka = {
       wersjaZapisu: Mowa.WERSJA_ZAPISU, kiedy: new Date().toISOString(),
       przegladarka: navigator.userAgent, zdarzenia: [], wznowienia: 0, wynik: null,
@@ -388,11 +389,13 @@ var Mowa = {
         var b = zdarzenie.error;
         if (b === "not-allowed" || b === "service-not-allowed") {
           bladKrytyczny = true;
+          Mowa.ostatniBlad = "zgoda";
           toast("Brak zgody na mikrofon. Włącz ją w ustawieniach strony w Chrome.", false);
         } else if (b === "aborted") {
           bladKrytyczny = true; // ktoś inny przejął mikrofon albo nasłuch przerwano celowo
         } else if (b === "network" || b === "audio-capture") {
           bladKrytyczny = true;
+          Mowa.ostatniBlad = b === "network" ? "siec" : "zgoda";
           toast(b === "network" ? "Rozpoznawanie mowy potrzebuje internetu." : "Nie mogę użyć mikrofonu.", false);
         }
         // "no-speech" to tylko cisza — wznowimy nasłuch w onend

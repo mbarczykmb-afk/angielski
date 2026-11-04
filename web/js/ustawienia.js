@@ -55,6 +55,24 @@ function rysujUstawienia() {
     '<button class="btn drugi" id="btn-test-glosu" style="margin-top:8px">' + ik("glosnik") + "Posłuchaj próbki</button>" +
     '<p class="mini" style="margin-top:8px">' + statusMowy() + "</p></div>" +
 
+    /* --- Bezpieczeństwo --- */
+    '<div class="karta"><h3>PIN</h3>' +
+    '<p class="podpis">' + (u.maPin ? "Profil jest chroniony PIN-em." : "Profil nie ma PIN-u.") + "</p>" +
+    (u.maPin ? '<label for="pole-stary-pin">Obecny PIN</label><input id="pole-stary-pin" type="password" inputmode="numeric" maxlength="8">' : "") +
+    '<label for="pole-nowy-pin2">Nowy PIN (puste = wyłącz)</label>' +
+    '<input id="pole-nowy-pin2" type="password" inputmode="numeric" maxlength="8">' +
+    '<button class="btn drugi" id="btn-zmien-pin" style="margin-top:8px">Zapisz PIN</button></div>' +
+
+    /* --- Konto --- */
+    '<div class="karta"><h3>Konto</h3>' +
+    '<button class="btn drugi" id="btn-wyloguj">Wyloguj</button>' +
+    // Aplikacja i backend aktualizują się osobno i potrafią się rozjechać.
+    // Wtedy nowy ekran puka do starego serwera i sypie "Nieznana trasa" —
+    // ta linijka pozwala to zobaczyć od razu, zamiast zgadywać z błędu.
+    '<p class="mini" id="wersje-uslugi" style="margin-top:10px">Sprawdzam wersje...</p></div>' +
+
+    /* --- Zaawansowane: rzeczy techniczne schowane, żeby nie przytłaczały ucznia --- */
+    '<details class="zaawansowane"><summary>Zaawansowane: model AI, kopie zapasowe, Dysk Google, diagnostyka</summary>' +
     /* --- Model --- */
     '<div class="karta"><h3>Model rozmowy</h3>' +
     '<select id="pole-model">' +
@@ -80,29 +98,16 @@ function rysujUstawienia() {
     /* --- Dysk Google --- */
     '<div class="karta"><h3>Dysk Google</h3><div id="blok-dysku"><p class="mini">Sprawdzam...</p></div></div>' +
 
-    /* --- Bezpieczeństwo --- */
-    '<div class="karta"><h3>PIN</h3>' +
-    '<p class="podpis">' + (u.maPin ? "Profil jest chroniony PIN-em." : "Profil nie ma PIN-u.") + "</p>" +
-    (u.maPin ? '<label for="pole-stary-pin">Obecny PIN</label><input id="pole-stary-pin" type="password" inputmode="numeric" maxlength="8">' : "") +
-    '<label for="pole-nowy-pin2">Nowy PIN (puste = wyłącz)</label>' +
-    '<input id="pole-nowy-pin2" type="password" inputmode="numeric" maxlength="8">' +
-    '<button class="btn drugi" id="btn-zmien-pin" style="margin-top:8px">Zapisz PIN</button></div>' +
-
-    /* --- Konto --- */
-    '<div class="karta"><h3>Konto</h3>' +
-    '<button class="btn drugi" id="btn-wyloguj">Wyloguj</button>' +
-    '<p class="mini" style="margin-top:10px">Serwer: ' + esc(Api.adres) + "</p>" +
-    // Aplikacja i backend aktualizują się osobno i potrafią się rozjechać.
-    // Wtedy nowy ekran puka do starego serwera i sypie "Nieznana trasa" —
-    // ta linijka pozwala to zobaczyć od razu, zamiast zgadywać z błędu.
-    '<p class="mini" id="wersje-uslugi">Sprawdzam wersje...</p>' +
+    '<div class="karta"><h3>Serwer i diagnostyka</h3>' +
+    '<p class="mini">Serwer: ' + esc(Api.adres) + "</p>" +
     // Surowe dane z ostatniego nagrania — do wklejenia, gdy zapis mowy wariuje
     '<details class="mini" style="margin-top:8px"><summary>Diagnostyka mikrofonu</summary>' +
     '<p class="mini">Co przeglądarka przysłała przy ostatnim nagraniu. Skopiuj i wklej, jeśli zapis Twoich słów wygląda dziwnie.</p>' +
     '<pre id="diag-mikrofon" style="white-space:pre-wrap;word-break:break-word;max-height:220px;overflow:auto;font-size:11px">' +
     esc(Mowa.diagnostyka ? JSON.stringify(Mowa.diagnostyka) : "Jeszcze nic nie nagrano (wersja zapisu " + Mowa.WERSJA_ZAPISU + ").") + "</pre>" +
     '<button class="btn drugi" id="btn-kopiuj-diag" type="button">Kopiuj</button></details>' +
-    '<p class="mini"><a href="#" id="link-zmien-adres2" style="color:var(--przygasly)">Zmień adres serwera</a></p></div>';
+    '<p class="mini"><a href="#" id="link-zmien-adres2" style="color:var(--przygasly)">Zmień adres serwera</a></p></div>' +
+    "</details>";
 
   podepnijUstawienia();
   wczytajListeKopii();

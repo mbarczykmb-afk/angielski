@@ -93,22 +93,24 @@ function rysujDzisKurs() {
   /* --- Karta lekcji dnia --- */
 
   if (!dzien) {
-    html += '<div class="karta bohater srodek">' +
+    html += '<div class="karta bohater srodek">' + portretNovy() +
       '<div class="etykieta">Na start</div>' +
       "<h2>Sprawdźmy Twój poziom</h2>" +
       '<p class="podpis">Pięć minut testu, a ułożę Ci plan 30 dni rozmów dopasowany do Twoich braków.</p>' +
       '<button class="btn" id="btn-zrob-test">' + ik("graj") + "Zrób test</button></div>";
   } else if (s.zrobioneDzis && dzien.status === "ukonczony") {
-    html += '<div class="karta bohater srodek">' +
+    html += '<div class="karta bohater srodek">' + portretNovy() +
       '<div class="etykieta">' + ik("ok") + " Dzisiejsza lekcja zrobiona</div>" +
       "<h2>Dobra robota!</h2>" +
       '<p class="podpis">Jutro dzień ' + s.biezacyDzien + ". Możesz jeszcze pogadać albo powtórzyć słówka.</p>" +
       '<button class="btn" id="btn-dodatkowa">' + ik("rozmowa") + "Jeszcze jedna rozmowa</button></div>";
   } else {
-    html += '<div class="karta bohater">' +
+    var zNova = portretNovy();
+    html += '<div class="karta bohater' + (zNova ? " z-nova" : "") + '">' + zNova +
       '<div class="etykieta">Dzień ' + dzien.dzien + " z " + s.plan.length + "</div>" +
       "<h2>" + esc(dzien.temat) + "</h2>" +
       '<p class="podpis">' + esc(dzien.cel) + "</p>" +
+      (zNova ? '<p class="nova-mowi">Nova: „Gotowa, kiedy Ty jesteś. Mów śmiało — błędy poprawimy razem.”</p>' : "") +
       '<button class="btn" id="btn-start-lekcji">' + ik("mikrofon") + "Zacznij rozmowę</button></div>";
   }
 
@@ -187,4 +189,10 @@ function odmianaSlowek(n) {
 
 function odmianaDni(n) {
   return n === 1 ? "dzień" : "dni";
+}
+
+// Portret lektorki na ekranie głównym — od pierwszego ekranu widać, z kim się rozmawia
+function portretNovy() {
+  if (typeof Awatar === "undefined" || Awatar.styl() !== "nova") return "";
+  return '<img class="portret-novy" src="./icons/nova.webp" alt="" aria-hidden="true" width="96" height="96">';
 }

@@ -957,3 +957,38 @@ body.skupienie #toast { top: calc(160px + env(safe-area-inset-top)); }
 .awatar-twarz.robot { cursor: pointer; transition: width .25s, height .25s, flex-basis .25s; }
 .awatar-panel.duzy .awatar-twarz.robot { width: 168px; height: 168px; flex: 0 0 168px; }
 body.skupienie:has(.awatar-panel.duzy) #toast { top: calc(240px + env(safe-area-inset-top)); }
+
+/* ============================================================
+   Ustawienia zaawansowane — schowane pod jednym rozwijanym nagłówkiem
+   ============================================================ */
+details.zaawansowane { margin-top: 4px; }
+details.zaawansowane > summary {
+  list-style: none; cursor: pointer;
+  padding: 14px 16px; margin-bottom: 12px;
+  border: 1px dashed var(--ramka); border-radius: 14px;
+  color: var(--przygasly); font-size: 14px; font-weight: 600;
+}
+details.zaawansowane > summary::-webkit-details-marker { display: none; }
+details.zaawansowane > summary::before { content: "▸ "; }
+details.zaawansowane[open] > summary::before { content: "▾ "; }
+
+/* Awatar 3D wczytuje się chwilę (pierwszy raz pobiera model) — kręcący się
+   pierścień zamiast pustego kółka */
+.awatar-twarz.robot { position: relative; }
+.awatar-twarz.robot:empty::after {
+  content: ""; position: absolute; inset: 30%;
+  border-radius: 50%; border: 3px solid rgba(95, 243, 255, .2); border-top-color: #5ff3ff;
+  animation: obrot 0.9s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) { .awatar-twarz.robot:empty::after { animation: none; } }
+
+/* Portret Novy w karcie lekcji na ekranie głównym */
+.karta.bohater { position: relative; }
+.portret-novy {
+  position: absolute; top: 10px; right: 10px;
+  width: 96px; height: 96px; border-radius: 50%; object-fit: cover; pointer-events: none;
+  background: radial-gradient(circle at 50% 38%, rgba(127, 245, 217, .3), rgba(36, 196, 143, .08) 62%, rgba(13, 17, 23, 0) 72%);
+}
+.karta.bohater.z-nova .etykieta, .karta.bohater.z-nova h2, .karta.bohater.z-nova > .podpis { padding-right: 100px; }
+.karta.bohater.srodek .portret-novy { position: static; display: block; margin: 0 auto 6px; }
+.nova-mowi { font-size: 13px; color: var(--zielony2); margin: 8px 0 12px; font-style: italic; }
