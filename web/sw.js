@@ -3,15 +3,15 @@
    Podnieś WERSJA po każdej zmianie plików, żeby telefon pobrał nowe.
    ============================================================ */
 
-var WERSJA = "angielski-ai-v30";
+var WERSJA = "angielski-ai-v31";
 
 var SZKIELET = [
   "./",
   "./index.html",
   "./app.css",
   "./manifest.webmanifest",
-  "./icons/ikona-192.png",
-  "./icons/ikona-512.png",
+  "./icons/ikona-v2-192.png",
+  "./icons/ikona-v2-512.png",
   "./icons/ikona.svg",
   "./js/rdzen.js",
   "./js/api.js",

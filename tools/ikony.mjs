@@ -1,4 +1,4 @@
-// UWAGA: ikony aplikacji (ikona-192/512, maskowalna) pochodzą teraz z Animacja/Ikona.png —
+// UWAGA: ikony aplikacji (icons/ikona-v2-*.png) pochodzą teraz z Animacja/Ikona.png —
 // robi je tools/awatar-foto.sh. Ten generator nadpisałby je ikoną z Novą 3D.
 
 // Generator ikon Angielski AI.

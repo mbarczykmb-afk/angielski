@@ -32,8 +32,8 @@ convert "$TMP"/s-{0..8}.png +append -quality 82 "$K/web/awatar/mowi.webp"
 convert "$Z/encouraging.png" -crop 256x256+0+0 +repage -resize 192x192 -quality 85 "$K/web/awatar/portret.webp"
 
 # Ikony aplikacji z Ikona.png
-convert "$Z/Ikona.png" -resize 512x512 "$K/web/icons/ikona-512.png"
-convert "$Z/Ikona.png" -resize 192x192 "$K/web/icons/ikona-192.png"
+convert "$Z/Ikona.png" -resize 512x512 "$K/web/icons/ikona-v2-512.png"
+convert "$Z/Ikona.png" -resize 192x192 "$K/web/icons/ikona-v2-192.png"
 # Maskowalna: Android przycina do kółka/kształtu — motyw w bezpiecznym środku na pełnym tle
-convert "$Z/Ikona.png" -resize 410x410 -background '#0a1230' -gravity center -extent 512x512 "$K/web/icons/ikona-maskowalna-512.png"
+convert "$Z/Ikona.png" -resize 410x410 -background '#0a1230' -gravity center -extent 512x512 "$K/web/icons/ikona-v2-maskowalna-512.png"
 ls -la "$K/web/awatar" "$K/web/icons"
